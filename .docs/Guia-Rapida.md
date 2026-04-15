@@ -2,7 +2,7 @@
 
 **Autor:** Sebastián Illa  
 **Fecha:** 2026-04-14  
-**Última modificación:** 2026-04-14
+**Última modificación:** 2026-04-15
 
 ---
 

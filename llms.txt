@@ -1,24 +1,49 @@
 # SAI Toolbox - LLM Context
 
+**Author:** Sebastián Illa  
+**Created:** 2026-04-13  
+**Last Updated:** 2026-04-15
+
+---
+
 ## Overview
 
 SAI Toolbox is a command-line tool that scaffolds production-ready Next.js projects with enterprise architecture patterns. It provides two architectural choices: Modular Vertical Slicing or Hexagonal (Clean) Architecture.
 
+The project prioritizes **shell portability** (Bash 3.2+, macOS BSD, Linux GNU), **robust error handling**, and **developer experience** with automated git workflows and AI agent integration.
+
+---
+
 ## Project Creation
 
-To create a new project:
+### Installation
 
 ```bash
+# Install globally (recommended)
 curl -fsSL https://raw.githubusercontent.com/Sebailla/SAI-toolbox/main/install.sh | bash
+
+# Use from anywhere
 init-projects
 ```
 
-The installer asks for:
-1. Project name (alphanumeric, dashes, underscores only)
-2. Architecture choice (Modular or Hexagonal)
-3. AI agent (OpenCode, Claude Code, Cursor, Gemini CLI, or all)
-4. Graphify knowledge graph (optional)
-5. GGA automatic code review (detected if installed)
+### Interactive Steps
+
+```
+  ▸ Step 1 ─── Project name (alphanumeric, must start with letter)
+  ▸ Step 2 ─── Architecture (Modular or Hexagonal)
+  ▸ Step 3 ─── AI Agent (OpenCode, Claude Code, Cursor, Gemini, All)
+  ▸ Step 4 ─── Graphify knowledge graph (optional)
+  ▸ Step 5 ─── Confirm
+```
+
+### Requirements
+
+- `bun` (installs dependencies, runs scripts)
+- `git` (version control)
+- `npm` (for `bun pkg set` commands)
+- `perl` (optional, for timeout fallback on macOS without gtimeout)
+
+---
 
 ## Git Workflow
 
@@ -33,22 +58,40 @@ develop (permanent work branch)
   ↑
   │ Each commit from feat/fix/chore
   │
-feat/xxx, fix/xxx, chore/xxx (temporary feature branches)
+feat/xxx, fix/xxx, chore/xxx, docs/xxx (temporary feature branches)
 ```
 
 ### Automated Commit Script (git-c)
 
+The `git-c` script automates the commit workflow with robust error handling:
+
 ```bash
 # From develop, create automated commit
-git c "add user login feature"
-
-# What it does:
-# 1. Detects change type (feat/fix/docs/chore/test)
-# 2. Creates branch from develop: feat/xxx
-# 3. Runs bun test --run
-# 4. Runs GGA code review (if installed)
-# 5. Creates commit with Conventional Commits format
+git c "add user authentication feature"
 ```
+
+**What it does:**
+
+1. **Verifies** you're on `develop` branch and it exists
+2. **Detects** change type (feat/fix/docs/chore/test) using `case` statements (no regex injection)
+3. **Generates** branch name with slugify:
+   - Supports accented characters (áéíóúñü)
+   - Truncates to 50 characters max
+   - Strips leading/trailing hyphens
+   - Falls back to "unnamed" if empty
+4. **Verifies** branch doesn't already exist
+5. **Runs** `bun test --run --passWithNoTests`
+6. **Runs** GGA code review (if installed)
+7. **Creates** branch and commit **atomically**
+8. **Cleans up** orphaned branch if commit fails
+
+**Safety Features:**
+
+- Uses `printf` instead of `echo -e` (POSIX compliant)
+- Git alias uses absolute path from repo root: `!bash "$(git rev-parse --show-toplevel)/git-c"`
+- If commit fails after branch creation, branch is automatically deleted
+
+---
 
 ## Architecture Options
 
@@ -59,16 +102,22 @@ Organizes code by features/modules. Each module is self-contained with its own c
 ```
 src/modules/<name>/
 ├── components/     # UI components (no business logic)
-├── services/       # Pure business logic (no React hooks)
-├── actions.ts      # Server Actions with Zod validation
-├── types.ts        # Module-specific types
-└── index.ts       # Public API
+├── services/        # Pure business logic (no React hooks)
+├── actions.ts       # Server Actions with Zod validation
+├── types.ts         # Module-specific types
+└── index.ts        # Public API
+
+src/core/            # Shared utilities, hooks, lib
+src/components/ui/   # Generic UI components (Button, Dialog, etc.)
 ```
 
 **Rules:**
+
 - Services cannot use React hooks or import components
 - Components must delegate business logic to services
+- Actions always use `'use server'` with Zod validation
 - Shared logic goes to `src/core/`
+- Generic UI goes to `src/components/ui/`
 
 ### Hexagonal (Clean Architecture)
 
@@ -95,23 +144,31 @@ src/
 └── shared/          # Utilities
 ```
 
-**Rules (STRICT):**
+**Rules (STRICT - VIOLATIONS CAUSE BUILD FAILURE):**
+
 - Domain cannot import from Application or Infrastructure
 - Application cannot import from Infrastructure
 - All Infrastructure must implement Domain/Application interfaces
-- No framework imports in Domain files
+- No framework imports in Domain files (no Prisma, no Express)
+
+---
 
 ## Stack
 
-- Next.js 16 (App Router)
-- TypeScript
-- Tailwind CSS v4
-- Prisma + PostgreSQL
-- Zod (validation)
-- Vitest + Playwright (testing)
-- Husky + Commitlint (git hooks)
-- Standard Version (semantic versioning)
-- JWT + bcryptjs (auth)
+| Category | Technology |
+|----------|-----------|
+| Framework | Next.js 16 (App Router) |
+| Language | TypeScript |
+| Styling | Tailwind CSS v4 |
+| Database | Prisma + PostgreSQL |
+| Validation | Zod |
+| Testing | Vitest + Playwright |
+| Git Hooks | Husky + Commitlint |
+| Versioning | Standard Version (semantic versioning) |
+| Auth | JWT + bcryptjs |
+| AI Integration | GGA (Gentleman Guardian Angel), Graphify |
+
+---
 
 ## Generated Files
 
@@ -121,16 +178,18 @@ proyecto/
 ├── .env                    # (NOT committed - local config)
 ├── prisma/schema.prisma    # Database schema
 ├── CHANGELOG.md           # Changelog (Keep a Changelog format)
-├── VERSION                # Current version (1.0.0)
+├── VERSION                 # Current version (1.0.0)
 ├── .versionrc            # standard-version config
-├── .husky/               # Git hooks
+├── .husky/               # Git hooks (commit-msg, pre-commit, pre-push)
 ├── .github/workflows/    # CI/CD (health-gate + release)
 ├── .vscode/settings.json  # VSCode config
-├── git-c                 # Automated commit script
-├── AGENTS.md             # AI agent rules
+├── git-c                  # Automated commit script (executable)
+├── AGENTS.md              # AI agent rules (all agents)
 ├── CLAUDE.md / .cursorrules / GEMINI.md  # Per-agent rules
-└── .agent/skills/        # Custom AI skills
+└── .agent/skills/        # Custom AI skills (not committed)
 ```
+
+---
 
 ## Semantic Versioning
 
@@ -144,6 +203,8 @@ bun run release
 # feat! or fix!: → Major (1.0.0 → 2.0.0)
 ```
 
+---
+
 ## Conventional Commits
 
 ```
@@ -152,7 +213,9 @@ bun run release
 Types: feat, fix, chore, docs, refactor, test, perf, ci
 ```
 
-## Important Rules
+---
+
+## Important Project Rules
 
 1. **Communication:** Spanish (Rioplatense) with "fundamentación" - always explain WHY and HOW
 2. **Architecture:** STRICT adherence to chosen pattern - decline violations
@@ -162,26 +225,43 @@ Types: feat, fix, chore, docs, refactor, test, perf, ci
 6. **Commits:** Conventional Commits strict format
 7. **Tests:** All features must have unit tests
 
-## Documentation
+---
 
-- `.docs/Arquitectura-Modular.md` - Modular Vertical Slicing guide
-- `.docs/Arquitectura-Hexagonal.md` - Hexagonal Architecture guide
-- `.docs/Guia-Rapida.md` - Quick start guide
-- `.docs/Git-Workflow.md` - Git workflow detailed documentation
-- `README.md` - Project overview
-- `llms.txt` - This file
+## Shell Portability
+
+The init script is designed for maximum compatibility:
+
+- **Bash 3.2+** compatible
+- **macOS (BSD)**: Uses `sed -i ''` (BSD syntax)
+- **Linux (GNU)**: Uses `sed -i''` (GNU syntax)
+- **Timeout**: Tries `timeout` → `gtimeout` → `perl alarm()` fallback
+- **Colors**: ANSI-C quoting `$'\033['` works on all shells
+
+---
 
 ## Post-Installation
 
 ```bash
 cd project-name
+
+# 1. Install dependencies
 bun install
+
+# 2. Configure environment
 cp .env.template .env
 # Edit .env with your PostgreSQL connection
+
+# 3. Generate Prisma client
 bunx prisma generate
+
+# 4. Create database tables
 bunx prisma migrate dev --name init
+
+# 5. Start development
 bun dev
 ```
+
+---
 
 ## Environment Variables (.env.template)
 
@@ -193,23 +273,75 @@ APP_URL="http://localhost:3000"
 NODE_ENV="development"
 ```
 
+---
+
 ## Available Commands
 
+### Development
 ```bash
-bun dev              # Development
+bun dev              # Development server
 bun build            # Production build
+bun start            # Production server
+```
+
+### Testing
+```bash
 bun test             # Unit tests (Vitest)
+bun test --run       # Run tests once
 bun test:e2e         # E2E tests (Playwright)
-bun lint             # Linting
+bun test:watch       # Watch mode
+```
+
+### Database
+```bash
 bun db:generate      # Generate Prisma client
 bun db:migrate       # Run migrations
 bun db:push          # Push to DB (development)
 bun db:seed          # Seed data
 bun db:studio        # Prisma UI
-bun run release      # Create release (semver)
-git c "message"      # Automated commit from develop
+bun db:reset         # Reset database (⚠️ deletes data)
 ```
+
+### Git
+```bash
+git c "message"      # Automated commit from develop
+git c --help         # Show git-c help
+```
+
+### Releases
+```bash
+bun run release      # Create release (semver bump + CHANGELOG + tag)
+```
+
+---
+
+## Documentation
+
+| File | Description |
+|------|-------------|
+| `.docs/Arquitectura-Modular.md` | Modular Vertical Slicing guide |
+| `.docs/Arquitectura-Hexagonal.md` | Hexagonal Architecture guide |
+| `.docs/Guia-Rapida.md` | Quick start guide |
+| `.docs/Git-Workflow.md` | Git workflow detailed documentation |
+| `.agent/AGENTS.md` | AI agent configuration and rules |
+| `README.md` | Project overview |
+| `llms.txt` | This file (optimized for LLM context) |
+
+---
+
+## AI Agent Integration
+
+The project includes `.agent/AGENTS.md` with:
+
+- **Communication rules**: Spanish (Rioplatense), always explain WHY and HOW
+- **Architecture rules**: Strict adherence to chosen pattern
+- **SDD workflow**: Spec-Driven Development mandatory
+- **GGA integration**: Code review on every commit
+
+When working with an AI agent in this project, it should read `.agent/AGENTS.md` first.
+
+---
 
 ## Author
 
-Sebastián Illa
+**Sebastián Illa**

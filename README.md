@@ -20,6 +20,8 @@ Crea un proyecto completo con Next.js, TypeScript, Tailwind CSS v4, Prisma + Pos
 | **Graphify** | Knowledge graph para arquitectura (opcional) |
 | **GGA** | Code review con IA en cada commit (automático si está instalado) |
 | **UI Colorida** | Interfaz interactiva con colores y ayuda visual |
+| **Portable** | Compatible con macOS (BSD) y Linux (GNU) |
+| **Shell Timeout** | Timeout portable con fallback a perl (macOS sin gtimeout) |
 
 ---
 
@@ -81,11 +83,14 @@ git c --help
 
 ### Qué hace `git c`:
 
-1. **Detecta el tipo** de cambio (feat/fix/docs/chore/test)
-2. **Crea la rama** desde develop: `feat/mi-nueva-feature`
-3. **Corre los tests**: `bun test --run`
-4. **Corre GGA review** (si está instalado)
-5. **Hace el commit** con Conventional Commit format
+1. **Verifica** que estés en `develop` y que la rama exista
+2. **Detecta el tipo** de cambio (feat/fix/docs/chore/test)
+3. **Genera nombre de rama** con slugify (soporta acentos, truncado a 50 chars)
+4. **Verifica que la rama** no exista ya
+5. **Corre los tests**: `bun test --run --passWithNoTests`
+6. **Corre GGA review** (si está instalado)
+7. **Crea la rama** y hace el commit de forma atómica
+8. Si algo falla después de crear la rama, la elimina automáticamente
 
 ---
 
@@ -312,4 +317,4 @@ MIT
 
 **Autor:** Sebastián Illa  
 **Creado:** 2026-04-13  
-**Última modificación:** 2026-04-14
+**Última modificación:** 2026-04-15

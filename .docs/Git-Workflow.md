@@ -2,7 +2,7 @@
 
 **Autor:** Sebastián Illa  
 **Fecha:** 2026-04-14  
-**Última modificación:** 2026-04-14
+**Última modificación:** 2026-04-15
 
 ---
 
@@ -98,21 +98,29 @@ git push origin main --follow-tags
 
 ### Qué hace automáticamente
 
-1. **Verifica** que estés en `develop`
+1. **Verifica** que estés en `develop` y que la rama exista
 2. **Detecta** el tipo de cambio:
    - `feat` - Nuevos archivos en `src/`
-   - `fix` - Archivos en `src/` con "fix" en el mensaje
+   - `fix` - Archivos en `src/` con "fix", "hotfix" o "patch" en el mensaje
    - `docs` - Archivos `.md`
    - `chore` - Config, scripts, deps
    - `test` - Archivos de test
 
-3. **Genera** nombre de rama: `tipo/nombre-en-kebab-case`
+3. **Genera** nombre de rama con slugify:
+   - Soporta caracteres acentuados (áéíóúñü)
+   - Trunca a 50 caracteres máximo
+   - Verifica que no esté vacío
+   - Limpia guiones al inicio/final
 
-4. **Corre tests**: `bun test --run`
+4. **Verifica** que la rama no exista ya
 
-5. **Corre GGA**: Si está instalado, hace code review
+5. **Corre tests**: `bun test --run --passWithNoTests`
 
-6. **Crea** la rama y hace el commit
+6. **Corre GGA**: Si está instalado, hace code review
+
+7. **Crea** la rama y hace el commit de forma atómica
+
+8. **Limpieza automática**: Si algo falla después de crear la rama, la elimina
 
 ### Uso
 
