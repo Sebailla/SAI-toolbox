@@ -12,10 +12,11 @@ Crea un proyecto completo con Next.js, TypeScript, Tailwind CSS v4, Prisma, y to
 |---------|-------------|
 | **Next.js 16** | App Router, TypeScript, Tailwind CSS v4 |
 | **Stack SAI** | Prisma, Zod, Vitest, Playwright, Husky |
-| **Git hooks** | Commitlint + Conventional Commits + branch naming |
+| **Arquitecturas** | Modular Vertical Slicing o Hexagonal (Clean Architecture) |
+| **Git hooks** | Commitlint + Conventional Commits + branch naming + GGA |
 | **Skills para IA** | Documentación automática y planificación |
 | **Graphify** | Knowledge graph para arquitectura (opcional) |
-| **GGA** | Code review con IA (opcional) |
+| **GGA** | Code review con IA en cada commit (automático si está instalado) |
 
 ---
 
@@ -47,7 +48,7 @@ El script es **completamente interactivo**. Solo ejecutá `init-projects` y te h
 2. **Arquitectura** - Modular o Hexagonal (Clean Architecture)
 3. **Agente de IA** - OpenCode, Claude, Cursor, Gemini o todos
 4. **Graphify** - Knowledge graph para arquitectura
-5. **GGA** - Code review con IA en cada commit
+5. **GGA** - Se detecta automáticamente si está instalado
 6. **Confirmar** - Revisar y crear
 
 ### Ejemplos

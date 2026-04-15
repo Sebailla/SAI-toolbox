@@ -65,7 +65,7 @@ select_project_name() {
 
 select_architecture() {
     echo ""
-    echo -e "${BOLD}2/6${NC} - Arquitectura"
+    echo -e "${BOLD}2/5${NC} - Arquitectura"
     echo -e "${DIM}Elegí el tipo de arquitectura para el proyecto${NC}"
     echo ""
     echo -e "  ${CYAN}1${NC}) Modular Vertical Slicing"
@@ -86,7 +86,7 @@ select_architecture() {
 
 select_agent() {
     echo ""
-    echo -e "${BOLD}3/6${NC} - Agente de IA"
+    echo -e "${BOLD}3/5${NC} - Agente de IA"
     echo -e "${DIM}Elegí el agente de IA principal para este proyecto${NC}"
     echo ""
     echo -e "  ${CYAN}1${NC}) OpenCode"
@@ -110,7 +110,7 @@ select_agent() {
 
 select_graphify() {
     echo ""
-    echo -e "${BOLD}4/6${NC} - Graphify (Knowledge Graph)"
+    echo -e "${BOLD}4/5${NC} - Graphify (Knowledge Graph)"
     echo -e "${DIM}Graphify genera un grafo de conocimiento del proyecto${NC}"
     echo ""
     echo -e "  ${CYAN}1${NC}) Sí - Habilitar Graphify"
@@ -128,39 +128,27 @@ select_graphify() {
     else
         log_info "Graphify: omitido"
     fi
-}
 
-select_gga() {
-    echo ""
-    echo -e "${BOLD}5/6${NC} - GGA (Gentleman Guardian Angel)"
-    echo -e "${DIM}Code review automático con IA en cada commit${NC}"
-    echo ""
-    echo -e "  ${CYAN}1${NC}) Sí - Habilitar GGA"
-    echo -e "  ${CYAN}2${NC}) No - Omitir GGA"
-    echo ""
-    read -r -p "Elegí [1-2]: " GGA_CHOICE
-
-    case "$GGA_CHOICE" in
-        1) USE_GGA="yes" ;;
-        2) USE_GGA="no" ;;
-        *) USE_GGA="no" ;;
-    esac
-    if [ "$USE_GGA" = "yes" ]; then
-        log_success "GGA: habilitado"
-    else
-        log_info "GGA: omitido"
+    # GGA se detecta automáticamente si está instalado
+    if command -v gga &>/dev/null; then
+        echo ""
+        echo -e "${BOLD}GGA:${NC}            Detectado y configurado automáticamente"
     fi
 }
 
 confirm_setup() {
     echo ""
-    echo -e "${BOLD}6/6${NC} - Confirmar configuración"
+    echo -e "${BOLD}5/5${NC} - Confirmar configuración"
     echo ""
     echo -e "  ${CYAN}Proyecto:${NC}      $PROJECT_NAME"
     echo -e "  ${CYAN}Arquitectura:${NC}   $ARCHITECTURE"
     echo -e "  ${CYAN}Agente:${NC}         $TARGET_AGENT"
     echo -e "  ${CYAN}Graphify:${NC}       $USE_GRAPHIFY"
-    echo -e "  ${CYAN}GGA:${NC}            $USE_GGA"
+    if command -v gga &>/dev/null; then
+        echo -e "  ${CYAN}GGA:${NC}            Automático (detectado)"
+    else
+        echo -e "  ${CYAN}GGA:${NC}            No detectado (opcional)"
+    fi
     echo ""
     read -r -p "Confirmar y crear proyecto? [s/n]: " CONFIRM
 
@@ -456,24 +444,43 @@ Respuesta breve + concreción.
 **Cómo:** [implementación o ejemplo]
 ```
 
-## Arquitectura: Hexagonal (Clean Architecture)
-- **Domain** (`src/domain/`): Entidades, value objects, servicios de dominio. SIN dependencias externas.
-- **Application** (`src/application/`): Use cases, DTOs, puertos de entrada/salida.
-- **Infrastructure** (`src/infrastructure/`): Adaptadores externos (BD, HTTP, queues).
-- **Shared** (`src/shared/`): Utilidades compartidas.
+## 🚨 ARQUITECTURA HEXAGONAL (STRICT - NO VIOLABLE)
 
-## Reglas de Dependencias (Ley de Dependencias)
-- Domain NO puede depender de Application ni Infrastructure.
-- Application puede depender de Domain.
-- Infrastructure implementa las interfaces de Domain/Application.
-- Shared puede ser usado por todos, pero idealmente no contiene lógica de negocio.
+Esta proyecto usa **Hexagonal Architecture (Clean Architecture)**. 
 
-## Estándares
-- Zod para validación de esquemas.
-- Prisma para todas las operaciones de BD.
-- Tailwind CSS v4 para estilos.
-- Tests unitarios con Vitest.
-- Conventional Commits estrictos.
+**ESTRUCTURA OBLIGATORIA:**
+```
+src/
+├── domain/           # Lógica pura de negocio - SIN dependencias externas
+│   ├── entities/     # Entidades del dominio
+│   ├── value-objects/ # Objetos de valor
+│   ├── services/     # Servicios de dominio
+│   ├── events/       # Eventos de dominio
+│   ├── exceptions/    # Excepciones del dominio
+│   └── interfaces/    # Contratos (puertos de salida)
+├── application/      # Casos de uso - depende de Domain
+│   ├── use-cases/    # Casos de uso
+│   ├── dto/          # Data Transfer Objects
+│   └── ports/        # Puertos de entrada/salida
+├── infrastructure/   # Adaptadores - implementa interfaces de Domain/Application
+│   ├── persistence/  # Prisma, repositorios
+│   ├── http/        # Controllers, middleware
+│   ├── queue/       # Colas de mensajes
+│   └── external/    # Servicios externos
+└── shared/          # Utilidades compartidas
+```
+
+**REGLAS ABSOLUTAS (PENALIZACIÓN: FALLA DE BUILD SI SE VIOLA):**
+1. **Domain** NO puede importar de `application/`, `infrastructure/`, ni `shared/`
+2. **Application** NO puede importar de `infrastructure/`
+3. Todo lo que esté en `infrastructure/` DEBE implementar interfaces definidas en Domain/Application
+4. NINGÚN archivo de dominio puede tener imports de frameworks externos (Prisma, Express, etc.)
+5. Los casos de uso (application) reciben y devuelven DTOs, NO entidades directas
+
+**COMPORTAMIENTO ANTE CÓDIGO VIOLADO:**
+- Si el usuario pide algo que viola la arquitectura, DECLINÁ educadamente
+- Explicá por qué viola la arquitectura y proponé alternativa que la respete
+- Bajo NINGUNA circunstancia generes código que violente la estructura
 
 ## 📚 Consultas de Documentación
 
@@ -523,19 +530,38 @@ Respuesta breve + concreción.
 **Cómo:** [implementación o ejemplo]
 ```
 
-## Arquitectura: Modular Vertical Slicing
-- Cada módulo en `src/modules/<nombre>/` debe tener: `components/`, `services/`, `actions.ts`, `types.ts`, `index.ts`.
-- **Services**: Lógica de negocio pura y acceso a datos (Prisma).
-- **Actions**: Server Actions para validación (Zod) y orquestación. Siempre usar `'use server'`.
-- **Components**: UI pura. Delegar lógica compleja a Services o Actions.
-- Lógica compartida global en `src/core/`. UI compartida genérica en `src/components/ui/`.
+## 🚨 ARQUITECTURA MODULAR VERTICAL SLICING (STRICT - NO VIOLABLE)
 
-## Estándares
-- Zod para validación de esquemas.
-- Prisma para todas las operaciones de BD.
-- Tailwind CSS v4 para estilos.
-- Tests unitarios con Vitest.
-- Conventional Commits estrictos.
+Este proyecto usa **Modular Vertical Slicing**. Todo código DEBE vivir en un módulo.
+
+**ESTRUCTURA OBLIGATORIA POR MÓDULO:**
+```
+src/modules/<nombre>/
+├── components/      # Componentes UI de este módulo
+├── services/       # Lógica de negocio pura (sin React)
+├── actions.ts      # Server Actions (validación + orquestación)
+├── types.ts        # Tipos específicos del módulo
+└── index.ts       # API pública del módulo
+```
+
+**COMPONENTES COMPARTIDOS:**
+```
+src/core/            # Utilidades, hooks, lib compartidos
+src/components/ui/   # Componentes UI genéricos (Button, Dialog, etc.)
+```
+
+**REGLAS ABSOLUTAS (PENALIZACIÓN: FALLA DE BUILD SI SE VIOLA):**
+1. **Services** NO pueden usar hooks de React ni importar componentes
+2. **Components** NO pueden contener lógica de negocio (delegar a Services)
+3. **Actions** SIEMPRE usan `'use server'` y validan con Zod
+4. Cada módulo es auto-contenido: sus components/services/actions se comunican SOLO dentro del módulo
+5. Lógica compartida va a `src/core/`, NO dentro de módulos específicos
+6. UI genérica va a `src/components/ui/`, NO a módulos específicos
+
+**COMPORTAMIENTO ANTE CÓDIGO VIOLADO:**
+- Si el usuario pide algo que viola la arquitectura, DECLINÁ educadamente
+- Explicá por qué viola la arquitectura y proponé alternativa que la respete
+- Bajo NINGUNA circunstancia generes código que violente la estructura
 
 ## 📚 Consultas de Documentación
 
@@ -681,10 +707,19 @@ fi
 EOF
     chmod +x .husky/pre-push
 
-    cat > .husky/pre-commit <<'EOF'
+    # GGA SIEMPRE en pre-commit si está instalado
+    if command -v gga &>/dev/null; then
+        cat > .husky/pre-commit <<'EOF'
+bun test
+bunx lint-staged
+gga run || exit 1
+EOF
+    else
+        cat > .husky/pre-commit <<'EOF'
 bun test
 bunx lint-staged
 EOF
+    fi
 }
 
 # ============================================================================
@@ -769,7 +804,13 @@ setup_graphify() {
 # ============================================================================
 
 setup_gga() {
-    if [ "$USE_GGA" != "yes" ]; then
+    # GGA SIEMPRE se configura si está disponible en el sistema
+    if ! command -v gga &>/dev/null; then
+        log_warn "GGA no está instalado. Se recomienda instalar para code review automático."
+        echo ""
+        log_info "Para instalar GGA:"
+        echo -e "  ${CYAN}brew install gentleman-programming/tap/gga${NC}"
+        echo ""
         return 0
     fi
 
@@ -784,15 +825,6 @@ setup_gga() {
         all)     default_provider="claude" ;;
     esac
 
-    if ! command -v gga &>/dev/null; then
-        log_warn "GGA no está instalado en el sistema."
-        echo ""
-        log_info "Para instalar GGA:"
-        echo -e "  ${CYAN}brew install gentleman-programming/tap/gga${NC}"
-        echo ""
-        return 0
-    fi
-
     log_info "Inicializando GGA..."
     gga init 2>/dev/null || true
 
@@ -805,14 +837,15 @@ PROVIDER="${default_provider}"
 FILE_PATTERNS="*.ts,*.tsx,*.js,*.jsx"
 EXCLUDE_PATTERNS="*.test.ts,*.test.tsx,*.spec.ts,*.d.ts,*.stories.tsx,*.config.ts"
 RULES_FILE="AGENTS.md"
-STRICT_MODE="false"
+STRICT_MODE="true"
 TIMEOUT="120"
 EOF
 
     log_info "Instalando hook de git..."
     gga install 2>/dev/null || true
 
-    log_success "GGA configurado. Provider: $default_provider"
+    log_success "GGA configurado y activo. Provider: $default_provider"
+    log_info "GGA se ejecutará AUTOMÁTICAMENTE en cada commit."
 }
 
 # ============================================================================
@@ -826,7 +859,6 @@ main() {
     select_architecture
     select_agent
     select_graphify
-    select_gga
     confirm_setup
 
     echo ""
