@@ -1,0 +1,40 @@
+# Binaries
+/gentle-ai
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output of go coverage
+*.out
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+*.tar
+/testdata
+# graphify outputs (generated on demand, not tracked)
+graphify-out/
+
+# graphify temporary files
+.graphify_*
+.graphify_analysis.json
+.graphify_cached.json
+.graphify_labels.json
+.graphify_uncached.txt
+
+# Test outputs
+test_output.txt
+bin/
