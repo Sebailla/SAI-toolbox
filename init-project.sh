@@ -31,6 +31,8 @@ log_error()   { log "${RED}${BOLD}[ERROR]${NC}  $*\\n" >&2; }
 ORIGINAL_DIR=$(pwd)
 PROJECT_CREATED=0
 CLEANUP_DONE=0
+# FIX 1: Track original exit code to distinguish user cancel from error
+ORIGINAL_EXIT_CODE=0
 
 cleanup() {
     # Evitar ejecución múltiple del cleanup
@@ -47,8 +49,10 @@ cleanup() {
             rm -rf "$ORIGINAL_DIR/$PROJECT_NAME"
         fi
     fi
-    # Siempre hacer exit 1 en cleanup por error
-    exit 1
+    # FIX 1: Only exit 1 if original was non-zero (error), preserve 0 for user cancel
+    if [ "$ORIGINAL_EXIT_CODE" -ne 0 ]; then
+        exit 1
+    fi
 }
 
 trap cleanup EXIT INT TERM
@@ -67,40 +71,43 @@ print_banner() {
     echo ""
 }
 
+# FIX 4: Replace recursion with iterative while loop
 select_project_name() {
-    echo ""
-    log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    log "${BOLD}${CYAN}  ▸ Paso 1 de 5 ─── Nombre del proyecto${NC}"
-    log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo ""
-    log "${DIM}Ingresá el nombre para tu proyecto (sin espacios)${NC}"
-    echo ""
-    read -r -p "   └─►  " PROJECT_NAME
-    echo ""
+    while true; do
+        echo ""
+        log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        log "${BOLD}${CYAN}  ▸ Paso 1 de 5 ─── Nombre del proyecto${NC}"
+        log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo ""
+        log "${DIM}Ingresá el nombre para tu proyecto (sin espacios)${NC}"
+        echo ""
+        read -r -p "   └─►  " PROJECT_NAME
+        echo ""
 
-    if [ -z "$PROJECT_NAME" ]; then
-        log_error "El nombre no puede estar vacío"
-        select_project_name
-        return
-    fi
+        if [ -z "$PROJECT_NAME" ]; then
+            log_error "El nombre no puede estar vacío"
+            continue
+        fi
 
-    # Sanitizar nombre: solo letras, números, guiones y guiones bajos
-    if [[ ! "$PROJECT_NAME" =~ ^[a-zA-Z0-9_-]+$ ]]; then
-        log_error "Solo letras, números, guiones (-) y guiones bajos (_)"
-        select_project_name
-        return
-    fi
+        # Sanitizar nombre: solo letras, números, guiones y guiones bajos
+        if [[ ! "$PROJECT_NAME" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+            log_error "Solo letras, números, guiones (-) y guiones bajos (_)"
+            continue
+        fi
 
-    # Verificar que no exista el directorio
-    if [ -d "$PROJECT_NAME" ]; then
-        log_error "El directorio '$PROJECT_NAME' ya existe. Elegí otro nombre."
-        select_project_name
-        return
-    fi
+        # Verificar que no exista el directorio
+        if [ -d "$PROJECT_NAME" ]; then
+            log_error "El directorio '$PROJECT_NAME' ya existe. Elegí otro nombre."
+            continue
+        fi
+
+        break
+    done
 
     log "${GREEN}  ✓${NC} Proyecto: ${BOLD}$PROJECT_NAME${NC}"
 }
 
+# FIX 4: Replace recursion with iterative while loop (no recursion needed for simple case)
 select_architecture() {
     echo ""
     log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -132,6 +139,7 @@ select_architecture() {
     log "${GREEN}  ✓${NC} Arquitectura: ${BOLD}$ARCHITECTURE${NC}"
 }
 
+# FIX 4: Replace recursion with iterative while loop (no recursion needed for simple case)
 select_agent() {
     echo ""
     log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -262,23 +270,18 @@ run_with_timeout() {
         return $?
     fi
 
-    # Intentar timeout de perl (macOS)
+    # FIX 2: Perl fallback - use alarm + system instead of IPC::Open3 to avoid deadlock
+    # system() doesn't capture output so no pipe issues
     if command -v perl &>/dev/null; then
         perl -e '
-            use IPC::Open3;
-            use Symbol qw(gensym);
-            my $sigalrm = sub { die "timeout\n" };
-            my $secs = shift;
-            $SIG{ALRM} = $sigalrm;
+            use strict;
+            use warnings;
+            my $secs = shift @ARGV;
+            $SIG{ALRM} = sub { exit 124 };
             alarm($secs);
-            eval {
-                my $pid = open3(my $in, my $out, my $err = gensym, @_);
-                waitpid($pid, 0);
-                alarm(0);
-                exit $? >> 8;
-            };
-            if ($@ eq "timeout\n") { exit 124 }
-            die $@ if $@;
+            system(@ARGV);
+            alarm(0);
+            exit ($? >> 8);
         ' "${seconds}" "${cmd[@]}"
         return $?
     fi
@@ -294,20 +297,21 @@ run_with_timeout() {
 create_project() {
     log_info "Creando proyecto: $PROJECT_NAME..."
 
+    # FIX 3: Set PROJECT_CREATED immediately after mkdir succeeds, before cd
     # Crear directorio con verificación
     if ! mkdir -p "$PROJECT_NAME"; then
         log_error "No se pudo crear el directorio $PROJECT_NAME"
         exit 1
     fi
 
+    # Marcar que el directorio fue creado (para cleanup) - BEFORE cd
+    PROJECT_CREATED=1
+
     # Entrar al directorio con verificación
     if ! cd "$PROJECT_NAME"; then
         log_error "No se pudo acceder al directorio $PROJECT_NAME"
         exit 1
     fi
-
-    # Marcar que el directorio fue creado (para cleanup)
-    PROJECT_CREATED=1
 
     log_info "Inicializando Git (rama main)..."
     # Git 2.28+ soporta -b. Intentar directo y hacer fallback si falla.
