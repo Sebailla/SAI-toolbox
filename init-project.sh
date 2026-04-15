@@ -226,7 +226,7 @@ confirm_setup() {
     read -r -t 120 -p "   └─►  Confirmar y crear proyecto? [${GREEN}s${NC}/${RED}n${NC}]: " CONFIRM
     echo ""
 
-    if [[ ! "$CONFIRM" =~ ^[SsYy]$ ]] && [[ ! "$CONFIRM" =~ ^[SsI][Ii]?$ ]]; then
+    if [[ ! "$CONFIRM" =~ ^[Ss]$ ]] && [[ ! "$CONFIRM" =~ ^[Ss][Ii]$ ]] && [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
         log_info "Operación cancelada."
         exit 0
     fi
@@ -282,7 +282,7 @@ run_with_timeout() {
             alarm($secs);
             system(@ARGV);
             alarm(0);
-            exit ($? >> 8);
+            exit $?;
         ' "${seconds}" "${cmd[@]}"
         return $?
     fi
@@ -335,7 +335,7 @@ create_project() {
     log_info "Instalando dependencias del stack..."
     run_with_timeout 120 bun add @prisma/client@latest lucide-react@latest clsx@latest tailwind-merge@latest \
         date-fns@latest zod@latest react-hot-toast@latest ioredis@latest \
-        jsonwebtoken@latest || log_warn "Algunas dependencias no se instalaron"
+        bcryptjs@latest jsonwebtoken@latest || log_warn "Algunas dependencias no se instalaron"
 
     run_with_timeout 120 bun add -d prisma@latest vitest@latest @testing-library/react@latest \
         @testing-library/dom@latest jsdom@latest @playwright/test@latest \
@@ -1005,9 +1005,9 @@ EOF
         fi
     fi
     if [[ "$github_user" == "USER" ]]; then
-        echo -e "  ${YELLOW}⚠${NC} No se pudo detectar tu username de GitHub."
-        echo "  El CHANGELOG usa ${CYAN}USER${NC} como placeholder."
-        echo "  Configurá tu Git username con: ${CYAN}git config --global github.user TU_USUARIO${NC}"
+        log_warn "No se pudo detectar tu username de GitHub."
+        echo "  El CHANGELOG usa USER como placeholder."
+        echo "  Configurá tu Git username con: git config --global github.user TU_USUARIO"
     fi
     
     local project_name=$(basename "$(pwd)")
@@ -1176,11 +1176,10 @@ detect_type() {
     elif echo "$CHANGED $UNTRACKED" | grep -qE "^docs/|\.md$"; then
         echo "docs"
     elif echo "$CHANGED $UNTRACKED" | grep -qE "^src/"; then
-        if echo "$COMMIT_MSG" | grep -qiE "^fix|^hotfix|^patch"; then
-            echo "fix"
-        else
-            echo "feat"
-        fi
+        case "$COMMIT_MSG" in
+            fix*|hotfix*|patch*) echo "fix" ;;
+            *) echo "feat" ;;
+        esac
     elif echo "$CHANGED $UNTRACKED" | grep -qE "^package\.json$|^bun\.lock$|^tsconfig|^next\.config|^prisma/"; then
         echo "chore"
     else
@@ -1292,9 +1291,9 @@ GITCOMMIT
 
     log_success "Git workflow configurado"
     echo ""
-    echo -e "  ${CYAN}Comandos disponibles:${NC}"
-    echo -e "    ${YELLOW}git c${NC} \"mensaje\"   - Commit rápido automático"
-    echo -e "    ${YELLOW}git c -h${NC}           - Ver ayuda"
+    log "  ${CYAN}Comandos disponibles:${NC}"
+    log "    ${YELLOW}git c${NC} \"mensaje\"   - Commit rápido automático"
+    log "    ${YELLOW}git c -h${NC}           - Ver ayuda"
 }
 
 # ============================================================================
