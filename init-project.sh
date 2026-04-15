@@ -22,17 +22,26 @@ log_warn()    { echo -e "${YELLOW}${BOLD}[WARN]${NC}  $*"; }
 log_error()   { echo -e "${RED}${BOLD}[ERROR]${NC}  $*" >&2; }
 
 ORIGINAL_DIR=$(pwd)
-SUCCESS=0
+PROJECT_CREATED=0
+CLEANUPdone=0
 
 cleanup() {
-    if [ "$SUCCESS" -eq 0 ]; then
+    # Evitar ejecución múltiple del cleanup
+    if [ "$CLEANUP_DONE" -eq 1 ]; then
+        return
+    fi
+    CLEANUP_DONE=1
+
+    if [ "$PROJECT_CREATED" -eq 1 ]; then
+        # El proyecto se creó pero algo falló después
         echo -e "${RED}${BOLD}[FATAL]${NC} El script no terminó correctamente. Deshaciendo..."
         if [ -n "$PROJECT_NAME" ] && [ -d "$ORIGINAL_DIR/$PROJECT_NAME" ]; then
             log_warn "Borrando directorio a medio crear: $PROJECT_NAME"
             rm -rf "$ORIGINAL_DIR/$PROJECT_NAME"
         fi
-        exit 1
     fi
+    # Siempre hacer exit 1 en cleanup por error
+    exit 1
 }
 
 trap cleanup EXIT INT TERM
@@ -52,7 +61,7 @@ print_banner() {
 }
 
 select_project_name() {
-    echo -e "${BOLD}1/6${NC} - Nombre del proyecto"
+    echo -e "${BOLD}1/5${NC} - Nombre del proyecto"
     echo -e "${DIM}Ingresá el nombre del proyecto (ej: mi-app, api-rest)${NC}"
     echo ""
     read -r -p "Nombre: " PROJECT_NAME
@@ -60,6 +69,21 @@ select_project_name() {
     if [ -z "$PROJECT_NAME" ]; then
         log_error "El nombre no puede estar vacío"
         select_project_name
+        return
+    fi
+
+    # Sanitizar nombre: solo letras, números, guiones y guiones bajos
+    if [[ ! "$PROJECT_NAME" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+        log_error "El nombre solo puede contener letras, números, guiones (-) y guiones bajos (_)"
+        select_project_name
+        return
+    fi
+
+    # Verificar que no exista el directorio
+    if [ -d "$PROJECT_NAME" ]; then
+        log_error "El directorio '$PROJECT_NAME' ya existe. Elegí otro nombre."
+        select_project_name
+        return
     fi
 }
 
@@ -182,14 +206,27 @@ check_dependencies() {
 
 create_project() {
     log_info "Creando proyecto: $PROJECT_NAME..."
-    mkdir -p "$PROJECT_NAME"
-    cd "$PROJECT_NAME"
+
+    # Crear directorio con verificación
+    if ! mkdir -p "$PROJECT_NAME"; then
+        log_error "No se pudo crear el directorio $PROJECT_NAME"
+        exit 1
+    fi
+
+    # Entrar al directorio con verificación
+    if ! cd "$PROJECT_NAME"; then
+        log_error "No se pudo acceder al directorio $PROJECT_NAME"
+        exit 1
+    fi
+
+    # Marcar que el directorio fue creado (para cleanup)
+    PROJECT_CREATED=1
 
     log_info "Inicializando Git (rama main)..."
     git init -q -b main
 
     log_info "Scaffold Next.js (TypeScript, Tailwind v4, App Router, src/)..."
-    bunx create-next-app@latest . \
+    timeout 300 bunx create-next-app@latest . \
         --typescript \
         --tailwind \
         --eslint \
@@ -198,22 +235,23 @@ create_project() {
         --import-alias "@/*" \
         --use-bun \
         --skip-install \
-        --yes
+        --yes || { log_error "create-next-app falló"; exit 1; }
 
     log_info "Instalando dependencias del stack..."
     bun add @prisma/client@latest lucide-react@latest clsx@latest tailwind-merge@latest \
         date-fns@latest zod@latest react-hot-toast@latest ioredis@latest \
-        bcryptjs@latest jsonwebtoken@latest
+        bcryptjs@latest jsonwebtoken@latest || log_warn "Algunas dependencias no se instalaron"
 
     bun add -d prisma@latest vitest@latest @testing-library/react@latest \
         @testing-library/dom@latest jsdom@latest @playwright/test@latest \
         husky@latest lint-staged@latest tsx@latest @types/node@latest \
         @types/react@latest @types/react-dom@latest @types/bcryptjs@latest \
         @types/jsonwebtoken@latest @commitlint/cli@latest \
-        @commitlint/config-conventional@latest standard-version@latest
+        @commitlint/config-conventional@latest standard-version@latest \
+        || log_warn "Algunas devDependencies no se instalaron"
 
     log_info "Inicializando Prisma..."
-    bunx prisma init
+    bunx prisma init || log_warn "Prisma init falló"
 }
 
 # ============================================================================
@@ -366,9 +404,23 @@ on:
       - main
 
 jobs:
+  health-gate:
+    name: "Health Check"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Build
+        run: bun run build
+      - name: Test
+        run: bun test --run
+
   release:
     name: "Release"
     runs-on: ubuntu-latest
+    needs: [health-gate]
     permissions:
       contents: write
     steps:
@@ -377,17 +429,14 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
       - uses: oven-sh/setup-bun@v2
-      - run: |
+      - name: Install deps
+        run: bun install
+      - name: Create Release
+        run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           bun run release
           git push --follow-tags origin main
-
-  health-gate:
-    name: "Health Check"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 EOF
 }
 
@@ -733,6 +782,13 @@ EOF
 
 setup_husky() {
     log_info "Configurando Husky y Commitlint..."
+
+    # Verificar que .git existe (husky init lo necesita)
+    if [ ! -d ".git" ]; then
+        log_error "No se encontró .git. ¿Corriste git init?"
+        exit 1
+    fi
+
     bunx husky init
 
     cat > commitlint.config.mjs <<'EOF'
@@ -815,11 +871,19 @@ EOF
 setup_git_initial() {
     log_info "Ritual de Día Cero..."
 
+    # Verificar y setear git config solo si no existe
     if [ -z "$(git config --global user.email)" ]; then
         git config user.email "dev@bunker.local"
+        log_info "Git email configurado: dev@bunker.local"
+    else
+        log_info "Git email: $(git config --global user.email) (existente)"
     fi
+
     if [ -z "$(git config --global user.name)" ]; then
         git config user.name "Developer"
+        log_info "Git name configurado: Developer"
+    else
+        log_info "Git name: $(git config --global user.name) (existente)"
     fi
 
     git add .
@@ -950,7 +1014,8 @@ main() {
     echo "  git checkout -b feat/nombre-tarea"
     echo ""
 
-    SUCCESS=1
+    # Desregistrar trap - todo salió bien
+    trap - EXIT INT TERM
 }
 
 main "$@"
