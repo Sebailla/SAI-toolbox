@@ -81,17 +81,18 @@ select_project_name() {
         echo ""
         log "${DIM}Ingresá el nombre para tu proyecto (sin espacios)${NC}"
         echo ""
-        read -r -p "   └─►  " PROJECT_NAME
+        read -r -t 120 -p "   └─►  " PROJECT_NAME
         echo ""
 
+        # Si read timeout, treat as cancel
         if [ -z "$PROJECT_NAME" ]; then
             log_error "El nombre no puede estar vacío"
             continue
         fi
 
-        # Sanitizar nombre: solo letras, números, guiones y guiones bajos
-        if [[ ! "$PROJECT_NAME" =~ ^[a-zA-Z0-9_-]+$ ]]; then
-            log_error "Solo letras, números, guiones (-) y guiones bajos (_)"
+        # Sanitizar nombre: debe empezar con letra, solo letras, números, guiones y guiones bajos
+        if [[ ! "$PROJECT_NAME" =~ ^[a-zA-Z][a-zA-Z0-9_-]*$ ]]; then
+            log_error "Debe empezar con una letra, solo letras, números, guiones (-) y guiones bajos (_)"
             continue
         fi
 
@@ -128,7 +129,7 @@ select_architecture() {
     log "${YELLOW}  │${NC}     Separación extrema del negocio            ${YELLOW}│${NC}"
     log "${YELLOW}  └─────────────────────────────────────────────┘${NC}"
     echo ""
-    read -r -p "   └─►  " ARCH_CHOICE
+    read -r -t 120 -p "   └─►  " ARCH_CHOICE
     echo ""
 
     case "$ARCH_CHOICE" in
@@ -156,7 +157,7 @@ select_agent() {
     log "${YELLOW}  │${NC}  ${BOLD}5${NC}) ${CYAN}Todos${NC} (inyecta reglas para todos)          ${YELLOW}│${NC}"
     log "${YELLOW}  └─────────────────────────────────────────────┘${NC}"
     echo ""
-    read -r -p "   └─►  " AGENT_CHOICE
+    read -r -t 120 -p "   └─►  " AGENT_CHOICE
     echo ""
 
     case "$AGENT_CHOICE" in
@@ -183,7 +184,7 @@ select_graphify() {
     log "${YELLOW}  │${NC}  ${BOLD}2${NC}) ${RED}No - Omitir Graphify${NC}                        ${YELLOW}│${NC}"
     log "${YELLOW}  └─────────────────────────────────────────────┘${NC}"
     echo ""
-    read -r -p "   └─►  " GRAPHIFY_CHOICE
+    read -r -t 120 -p "   └─►  " GRAPHIFY_CHOICE
     echo ""
 
     case "$GRAPHIFY_CHOICE" in
@@ -222,10 +223,10 @@ confirm_setup() {
     fi
     log "${YELLOW}  └─────────────────────────────────────────────┘${NC}"
     echo ""
-    read -r -p "   └─►  Confirmar y crear proyecto? [${GREEN}s${NC}/${RED}n${NC}]: " CONFIRM
+    read -r -t 120 -p "   └─►  Confirmar y crear proyecto? [${GREEN}s${NC}/${RED}n${NC}]: " CONFIRM
     echo ""
 
-    if [[ ! "$CONFIRM" =~ ^[Ss]$ ]]; then
+    if [[ ! "$CONFIRM" =~ ^[SsYy]$ ]] && [[ ! "$CONFIRM" =~ ^[SsI][Ii]?$ ]]; then
         log_info "Operación cancelada."
         exit 0
     fi
@@ -237,7 +238,7 @@ confirm_setup() {
 
 check_dependencies() {
     local missing=()
-    for cmd in bun git; do
+    for cmd in bun git npm; do
         if ! command -v "$cmd" &>/dev/null; then
             missing+=("$cmd")
         fi
@@ -260,13 +261,13 @@ run_with_timeout() {
 
     # Intentar timeout nativo (Linux)
     if command -v timeout &>/dev/null; then
-        timeout "${seconds}s" "${cmd[@]}"
+        timeout "$seconds" "${cmd[@]}"
         return $?
     fi
 
     # Intentar gtimeout (macOS con GNU coreutils)
     if command -v gtimeout &>/dev/null; then
-        gtimeout "${seconds}s" "${cmd[@]}"
+        gtimeout "$seconds" "${cmd[@]}"
         return $?
     fi
 
@@ -332,11 +333,11 @@ create_project() {
         --yes || { log_error "create-next-app falló"; exit 1; }
 
     log_info "Instalando dependencias del stack..."
-    bun add @prisma/client@latest lucide-react@latest clsx@latest tailwind-merge@latest \
+    run_with_timeout 120 bun add @prisma/client@latest lucide-react@latest clsx@latest tailwind-merge@latest \
         date-fns@latest zod@latest react-hot-toast@latest ioredis@latest \
-        bcryptjs@latest jsonwebtoken@latest || log_warn "Algunas dependencias no se instalaron"
+        jsonwebtoken@latest || log_warn "Algunas dependencias no se instalaron"
 
-    bun add -d prisma@latest vitest@latest @testing-library/react@latest \
+    run_with_timeout 120 bun add -d prisma@latest vitest@latest @testing-library/react@latest \
         @testing-library/dom@latest jsdom@latest @playwright/test@latest \
         husky@latest lint-staged@latest tsx@latest @types/node@latest \
         @types/react@latest @types/react-dom@latest @types/bcryptjs@latest \
@@ -913,8 +914,10 @@ export default { extends: ['@commitlint/config-conventional'] };
 EOF
 
     cat > .husky/commit-msg <<'EOF'
-bunx --no -- commitlint --edit $1
+#!/usr/bin/env bash
+bunx --no -- commitlint --edit "$1"
 EOF
+    chmod +x .husky/commit-msg
 
     cat > .husky/pre-push <<'EOF'
 #!/usr/bin/env bash
@@ -936,16 +939,19 @@ EOF
     # GGA SIEMPRE en pre-commit si está instalado
     if command -v gga &>/dev/null; then
         cat > .husky/pre-commit <<'EOF'
+#!/usr/bin/env bash
 bun test --run --passWithNoTests
 bunx lint-staged
 gga run || exit 1
 EOF
     else
         cat > .husky/pre-commit <<'EOF'
+#!/usr/bin/env bash
 bun test --run --passWithNoTests
 bunx lint-staged
 EOF
     fi
+    chmod +x .husky/pre-commit
 }
 
 # ============================================================================
@@ -954,10 +960,10 @@ EOF
 
 setup_scripts() {
     log_info "Configurando scripts..."
-    npm pkg set scripts.test="vitest" 2>/dev/null || true
-    npm pkg set scripts.db:seed="tsx prisma/seed.ts" 2>/dev/null || true
-    npm pkg set scripts.db:reset="prisma migrate reset --force && bun run db:seed" 2>/dev/null || true
-    npm pkg set scripts.release="standard-version" 2>/dev/null || true
+    bun pkg set scripts.test="vitest" 2>/dev/null || log_warn "No se pudo configurar scripts.test"
+    bun pkg set scripts.db:seed="tsx prisma/seed.ts" 2>/dev/null || log_warn "No se pudo configurar scripts.db:seed"
+    bun pkg set scripts.db:reset="prisma migrate reset --force && bun run db:seed" 2>/dev/null || log_warn "No se pudo configurar scripts.db:reset"
+    bun pkg set scripts.release="standard-version" 2>/dev/null || log_warn "No se pudo configurar scripts.release"
 }
 
 # ============================================================================
@@ -989,9 +995,12 @@ EOF
     # Intentar detectar username de GitHub desde remote URL
     local github_user="USER"
     if git remote get-url origin &>/dev/null; then
-        local remote_url=$(git remote get-url origin 2>/dev/null)
-        # Extraer username de URLs como https://github.com/username/repo.git
-        if [[ "$remote_url" =~ github\.com[:/]([^/]+) ]]; then
+        local remote_url=$(git remote get-url origin)
+        # Extraer username de URLs como:
+        # https://github.com/username/repo.git
+        # git@github.com:username/repo.git
+        # ssh://git@github.com/username/repo
+        if [[ "$remote_url" =~ github\.com[/:]([^/]+) ]]; then
             github_user="${BASH_REMATCH[1]}"
         fi
     fi
@@ -1115,16 +1124,16 @@ NC='\033[0m'
 
 # Help
 if [[ "$1" == "-h" || "$1" == "--help" ]]; then
-    echo -e "${BOLD}Git Commit Automatizado${NC}"
+    printf '%b\n' "${BOLD}Git Commit Automatizado${NC}"
     echo ""
-    echo -e "${CYAN}Uso:${NC}  git-c \"mensaje del commit\""
+    printf '%b\n' "${CYAN}Uso:${NC}  git-c \"mensaje del commit\""
     echo ""
-    echo -e "El script detecta el tipo de cambio y crea la rama automáticamente."
+    printf '%s\n' "El script detecta el tipo de cambio y crea la rama automáticamente."
     echo ""
-    echo -e "${CYAN}Aliases útiles:${NC}"
-    echo "  gc  = git-c (commit rápido)"
-    echo "  gca = git-c --amend (ammend)"
-    echo "  gcp = git-c --push (commit + push)"
+    printf '%b\n' "${CYAN}Aliases útiles:${NC}"
+    printf '%s\n' "  gc  = git-c (commit rápido)"
+    printf '%s\n' "  gca = git-c --amend (ammend)"
+    printf '%s\n' "  gcp = git-c --push (commit + push)"
     echo ""
     exit 0
 fi
@@ -1134,23 +1143,23 @@ CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
 # Verificar que la rama develop existe
 if ! git show-ref --verify --quiet refs/heads/develop 2>/dev/null; then
-    echo -e "${RED}✗${NC} La rama ${YELLOW}develop${NC} no existe."
-    echo "  Ejecutá ${CYAN}git checkout -b develop${NC} para crearla."
+    printf '%b\n' "${RED}✗${NC} La rama ${YELLOW}develop${NC} no existe."
+    printf '%b\n' "  Ejecutá ${CYAN}git checkout -b develop${NC} para crearla."
     exit 1
 fi
 
 # Verificar que estamos en develop
 if [[ "$CURRENT_BRANCH" != "develop" ]]; then
-    echo -e "${RED}✗${NC} Necesitás estar en la rama ${YELLOW}develop${NC} para crear un commit."
-    echo "  Rama actual: $CURRENT_BRANCH"
-    echo "  Ejecutá ${CYAN}git checkout develop${NC} para cambiarte."
+    printf '%b\n' "${RED}✗${NC} Necesitás estar en la rama ${YELLOW}develop${NC} para crear un commit."
+    printf '%s\n' "  Rama actual: $CURRENT_BRANCH"
+    printf '%b\n' "  Ejecutá ${CYAN}git checkout develop${NC} para cambiarte."
     exit 1
 fi
 
 # Mensaje obligatorio
 if [[ -z "$1" ]]; then
-    echo -e "${RED}✗${NC} Necesitás proporcionar un mensaje de commit."
-    echo "  Uso: git-c \"tu mensaje aquí\""
+    printf '%b\n' "${RED}✗${NC} Necesitás proporcionar un mensaje de commit."
+    printf '%s\n' "  Uso: git-c \"tu mensaje aquí\""
     exit 1
 fi
 
@@ -1177,11 +1186,22 @@ detect_type() {
     else
         echo "chore"
     fi
+    return 0
 }
 
 # Generar nombre de rama desde el mensaje
+# Soporta caracteres acentuados, trunca a 50 chars, verifica vacío
 slugify() {
-    echo "$1" | sed -E 's/[^a-zA-Z0-9]+/-/g' | sed -E 's/^-+|-+$//g' | tr '[:upper:]' '[:lower:]'
+    local input="$1"
+    local slug
+    slug=$(echo "$input" | sed -E 's/[^a-zA-Z0-9áéíóúñüÁÉÍÓÚÑÜ]+/-/g' | tr '[:upper:]' '[:lower:]' | cut -c1-50)
+    # Strip leading/trailing hyphens and check not empty
+    slug=$(echo "$slug" | sed -E 's/^-+|-+$//g')
+    if [[ -z "$slug" ]]; then
+        echo "unnamed"
+    else
+        echo "$slug"
+    fi
 }
 
 # Ejecutar
@@ -1190,75 +1210,85 @@ BRANCH_NAME="${TYPE}/$(slugify "$COMMIT_MSG")"
 
 # Verificar que la rama no exista ya
 if git show-ref --verify --quiet "refs/heads/$BRANCH_NAME" 2>/dev/null; then
-    echo -e "${RED}✗${NC} La rama ${YELLOW}$BRANCH_NAME${NC} ya existe."
-    echo "  Usá ${CYAN}git checkout $BRANCH_NAME${NC} para trabajar en ella,"
-    echo "  o usá otro mensaje para crear una nueva rama."
+    printf '%b\n' "${RED}✗${NC} La rama ${YELLOW}$BRANCH_NAME${NC} ya existe."
+    printf '%b\n' "  Usá ${CYAN}git checkout $BRANCH_NAME${NC} para trabajar en ella,"
+    printf '%s\n' "  o usá otro mensaje para crear una nueva rama."
     exit 1
 fi
 
-echo -e "${CYAN}┌─────────────────────────────────────────┐${NC}"
-echo -e "${CYAN}│${NC}  ${BOLD}Git Commit Automatizado${NC}"
-echo -e "${CYAN}└─────────────────────────────────────────┘${NC}"
+printf '%b\n' "${CYAN}┌─────────────────────────────────────────┐${NC}"
+printf '%b\n' "${CYAN}│${NC}  ${BOLD}Git Commit Automatizado${NC}"
+printf '%b\n' "${CYAN}└─────────────────────────────────────────┘${NC}"
 echo ""
-echo -e "  ${YELLOW}▸ Tipo:${NC}    ${GREEN}$TYPE${NC}"
-echo -e "  ${YELLOW}▸ Rama:${NC}    ${CYAN}$BRANCH_NAME${NC}"
-echo -e "  ${YELLOW}▸ Msg:${NC}     $COMMIT_MSG"
+printf '%b\n' "  ${YELLOW}▸ Tipo:${NC}    ${GREEN}$TYPE${NC}"
+printf '%b\n' "  ${YELLOW}▸ Rama:${NC}    ${CYAN}$BRANCH_NAME${NC}"
+printf '%s\n' "  ${YELLOW}▸ Msg:${NC}     $COMMIT_MSG"
 echo ""
 
 # Verificar cambios ( unstaged + staged + untracked )
 # Sale si NO hay cambios unstaged Y NO hay cambios staged Y NO hay untracked
 if git diff --quiet && git diff --cached --quiet && [[ -z "$(git ls-files --others --exclude-standard)" ]]; then
-    echo -e "  ${RED}✗${NC} No hay cambios para commitear"
+    printf '%b\n' "  ${RED}✗${NC} No hay cambios para commitear"
     exit 1
 fi
-echo -e "  ${GREEN}✓${NC} Hay cambios para commitear"
+printf '%b\n' "  ${GREEN}✓${NC} Hay cambios para commitear"
 
 # Stagear todo
 if ! git add -A; then
-    echo -e "  ${RED}✗${NC} git add falló"
+    printf '%b\n' "  ${RED}✗${NC} git add falló"
     exit 1
 fi
 
 # Ejecutar tests (si existen)
 if [[ -f "package.json" ]] && grep -q '"test"' package.json; then
     echo ""
-    echo -e "  ${CYAN}▸ Corriendo tests...${NC}"
+    printf '%b\n' "  ${CYAN}▸ Corriendo tests...${NC}"
     if ! bun test --run 2>/dev/null; then
-        echo -e "  ${RED}✗${NC} Tests fallaron. Corregí antes de commitear."
+        printf '%b\n' "  ${RED}✗${NC} Tests fallaron. Corregí antes de commitear."
         exit 1
     fi
-    echo -e "  ${GREEN}✓${NC} Tests OK"
+    printf '%b\n' "  ${GREEN}✓${NC} Tests OK"
 fi
 
 # Ejecutar GGA si está instalado
 if command -v gga &>/dev/null; then
     echo ""
-    echo -e "  ${CYAN}▸ Code review con GGA...${NC}"
+    printf '%b\n' "  ${CYAN}▸ Code review con GGA...${NC}"
     if ! gga run; then
-        echo -e "  ${RED}✗${NC} GGA encontró errores. Corregí antes de commitear."
+        printf '%b\n' "  ${RED}✗${NC} GGA encontró errores. Corregí antes de commitear."
         exit 1
     fi
-    echo -e "  ${GREEN}✓${NC} GGA OK"
+    printf '%b\n' "  ${GREEN}✓${NC} GGA OK"
 fi
 
-# Crear rama y commit
+# Crear rama y commit de forma atómica
+# Si algo falla después de crear la rama, volvemos a develop y mostramos error
 echo ""
-echo -e "  ${CYAN}▸ Creando rama y commit...${NC}"
-git checkout -b "$BRANCH_NAME"
-git commit -m "${TYPE}: ${COMMIT_MSG}"
+printf '%b\n' "  ${CYAN}▸ Creando rama y commit...${NC}"
+if ! git checkout -b "$BRANCH_NAME"; then
+    printf '%b\n' "  ${RED}✗${NC} No se pudo crear la rama $BRANCH_NAME"
+    exit 1
+fi
+if ! git commit -m "${TYPE}: ${COMMIT_MSG}"; then
+    printf '%b\n' "  ${RED}✗${NC} Commit falló. Limpiando rama..."
+    git checkout develop 2>/dev/null
+    git branch -D "$BRANCH_NAME" 2>/dev/null
+    printf '%b\n' "  ${YELLOW}Rama $BRANCH_NAME eliminada.${NC}"
+    exit 1
+fi
 
 echo ""
-echo -e "${GREEN}✓${NC} Commit creado en rama ${CYAN}$BRANCH_NAME${NC}"
+printf '%b\n' "${GREEN}✓${NC} Commit creado en rama ${CYAN}$BRANCH_NAME${NC}"
 echo ""
-echo -e "${DIM}Próximos pasos:${NC}"
-echo -e "  ${CYAN}git push -u origin $BRANCH_NAME${NC}  # Push y crear PR"
-echo -e "  ${CYAN}git checkout develop${NC}              # Volver a develop"
+printf '%b\n' "${DIM}Próximos pasos:${NC}"
+printf '%b\n' "  ${CYAN}git push -u origin $BRANCH_NAME${NC}  # Push y crear PR"
+printf '%b\n' "  ${CYAN}git checkout develop${NC}              # Volver a develop"
 GITCOMMIT
 
     chmod +x git-c
 
-    # Configurar git alias
-    git config alias.c "!bash git-c"
+    # Configurar git alias - usa ruta absoluta desde el root del repo
+    git config alias.c '!bash "$(git rev-parse --show-toplevel)/git-c"'
 
     log_success "Git workflow configurado"
     echo ""
@@ -1274,16 +1304,16 @@ GITCOMMIT
 setup_git_initial() {
     log_info "Ritual de Día Cero..."
 
-    # Verificar y setear git config solo si no existe
+    # Verificar y setear git config solo si no existe (global scope)
     if [ -z "$(git config --global user.email)" ]; then
-        git config user.email "dev@bunker.local"
+        git config --global user.email "dev@bunker.local"
         log_info "Git email configurado: dev@bunker.local"
     else
         log_info "Git email: $(git config --global user.email) (existente)"
     fi
 
     if [ -z "$(git config --global user.name)" ]; then
-        git config user.name "Developer"
+        git config --global user.name "Developer"
         log_info "Git name configurado: Developer"
     else
         log_info "Git name: $(git config --global user.name) (existente)"
