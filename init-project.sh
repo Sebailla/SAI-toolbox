@@ -932,13 +932,13 @@ EOF
     # GGA SIEMPRE en pre-commit si está instalado
     if command -v gga &>/dev/null; then
         cat > .husky/pre-commit <<'EOF'
-bun test
+bun test --run --passWithNoTests
 bunx lint-staged
 gga run || exit 1
 EOF
     else
         cat > .husky/pre-commit <<'EOF'
-bun test
+bun test --run --passWithNoTests
 bunx lint-staged
 EOF
     fi
