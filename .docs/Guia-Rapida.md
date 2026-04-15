@@ -58,87 +58,129 @@ bun dev
 
 ---
 
-## Estructura inicial
+## Git Workflow (Lo más importante)
+
+### Estructura de ramas
 
 ```
-mi-proyecto/
-├── src/
-│   ├── modules/              # (Modular) o domain/application/infrastructure (Hexagonal)
-│   ├── core/                # Utilidades compartidas
-│   └── app/                 # Next.js App Router
-├── prisma/
-│   └── schema.prisma         # Definición de tu base de datos
-├── .env                      # Variables de entorno (NO commitear)
-├── .env.template             # Template para copiar
-├── AGENTS.md                # Reglas para agentes de IA
-└── .husky/                   # Git hooks
+main ←───────────────────────────────────── producción (NUNCA tocar directo)
+  ↑                      ↑
+  │                      │ merge desde develop
+  │                      │
+develop ←── feat/mi-feature ←── fix/bug ←── chore/update
+```
+
+### Crear commits automáticos
+
+```bash
+# Asegurate de estar en develop
+git checkout develop
+
+# Crear un commit (crea rama + corre tests + corre GGA + commit)
+git c "agrego login con JWT"
+
+# Output:
+#   ▸ Tipo:    feat
+#   ▸ Rama:    feat/agrego-login-con-jwt
+#   ▸ Msg:     agrego login con JWT
+#   
+#   ✓ Tests OK
+#   ✓ GGA OK (si está instalado)
+#   ✓ Commit creado
+```
+
+### Workflow completo
+
+```bash
+# 1. Crear commit (desde develop)
+git c "agrego módulo de usuarios"
+
+# 2. Push y crear PR
+git push -u origin feat/agrego-modulo-de-usuarios
+
+# 3. Merge a develop (vía PR o manualmente)
+git checkout develop
+git merge feat/agrego-modulo-de-usuarios
+
+# 4. Cuando esté listo para producción
+git checkout main
+git merge develop
+bun run release  # bumps a 1.1.0, actualiza CHANGELOG, crea tag
 ```
 
 ---
 
 ## Comandos disponibles
 
+### Desarrollo
 ```bash
-bun dev              # Desarrollo
+bun dev              # Desarrollo (localhost:3000)
 bun build            # Build de producción
+bun start            # Iniciar producción
+```
+
+### Testing
+```bash
 bun test             # Tests unitarios (Vitest)
 bun test:e2e         # Tests E2E (Playwright)
 bun test:watch       # Tests en watch mode
+bun test:coverage    # Coverage report
+```
+
+### Linting
+```bash
 bun lint             # Linting
 bun lint:fix         # Linting con fixes automáticos
+```
+
+### Base de datos
+```bash
 bun db:generate      # Generar cliente Prisma
 bun db:migrate       # Correr migraciones
 bun db:push          # Push cambios a DB (desarrollo)
 bun db:seed          # Seed data
 bun db:studio        # UI de Prisma
-bun release          # Crear release (Standard Version)
+bun db:reset         # Reset DB (⚠️ borra datos)
 ```
 
----
-
-## Trabajar con Git
-
+### Releases
 ```bash
-# Crear branch para feature
-git checkout -b feat/mi-nueva-feature
-
-# Commit (el hook de commitlint valida el formato)
-git add .
-git commit -m "feat: descripción de lo que hacés"
-
-# Push y crear PR
-git push origin feat/mi-nueva-feature
+bun run release      # Crear release (bumps version + CHANGELOG + tag)
 ```
 
-### Formato de commits
-
-```
-feat: nueva funcionalidad
-fix: corrección de bug
-hotfix: corrección urgente en producción
-chore: tareas de mantenimiento
-docs: documentación
-refactor: refactoring sin cambiar funcionalidad
-test: agregar tests
+### Git
+```bash
+git c "mensaje"      # Commit automático (creas desde develop)
+git c --help         # Ver ayuda del commit automático
 ```
 
 ---
 
-## Roles de IA
+## Estructura inicial
 
-El proyecto viene con reglas para agentes de IA configuradas en `AGENTS.md`:
-
-- **OpenCode:** usa `AGENTS.md`
-- **Claude:** copia a `CLAUDE.md`
-- **Cursor:** copia a `.cursorrules`
-- **Gemini:** copia a `GEMINI.md`
-
-Estas reglas definen:
-- Comunicación en Español Rioplatense
-- Fundamentación obligatoria (por qué + cómo)
-- Arquitectura estricta (Hexagonal o Modular)
-- SDD workflow obligatorio
-- GGA code review obligatorio
+```
+mi-proyecto/
+├── src/
+│   ├── modules/              # (Modular)
+│   │   └── example/
+│   │       ├── components/
+│   │       ├── services/
+│   │       ├── actions.ts
+│   │       ├── types.ts
+│   │       └── index.ts
+│   ├── core/                # Utilidades compartidas
+│   └── app/                 # Next.js App Router
+│       └── api/             # API routes
+├── prisma/
+│   └── schema.prisma         # Definición de tu base de datos
+├── .env                      # Variables de entorno (NO commitear)
+├── .env.template             # Template para copiar
+├── CHANGELOG.md              # Historial de cambios
+├── VERSION                   # Versión actual
+├── AGENTS.md                 # Reglas para agentes de IA
+├── git-c                     # Script de commit automático
+└── .husky/                   # Git hooks
+```
 
 ---
 
@@ -167,6 +209,24 @@ DATABASE_URL="postgresql://user:password@localhost:5432/mydb"
 bunx husky init
 ```
 
+### Tests fallan en commit
+
+```bash
+# Correr tests manualmente para ver el error
+bun test --run
+
+# Fixear los tests y volver a intentar
+git c "fix: tests rotos"
+```
+
+### GGA encontró errores
+
+```bash
+# GGA te va a mostrar los errores antes de commitear
+# Corregilos y volvé a intentar
+git c "fix: corrijo errores de GGA"
+```
+
 ---
 
 ## Próximos pasos
@@ -174,9 +234,10 @@ bunx husky init
 1. Leé la documentación de arquitectura:
    - `.docs/Arquitectura-Modular.md`
    - `.docs/Arquitectura-Hexagonal.md`
+   - `.docs/Git-Workflow.md`
 
 2. Configurá tu agente de IA favorito con `AGENTS.md`
 
-3. Empezá a codear en una branch `feat/`
+3. Empezá a codear en una branch `feat/` usando `git c`
 
 4. Si tenés GGA instalado, el code review corre automático en cada commit

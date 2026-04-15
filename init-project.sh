@@ -1338,12 +1338,12 @@ main() {
     setup_agents_md
     setup_agent_rules
     setup_skills
-    setup_husky
     setup_scripts
     setup_gitignore
     setup_git_initial
     setup_versioning
     setup_git_workflow
+    setup_husky
     setup_graphify
     setup_gga
 

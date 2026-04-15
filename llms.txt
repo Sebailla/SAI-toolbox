@@ -1,4 +1,4 @@
-# SAI Toolbox
+# SAI Toolbox - LLM Context
 
 ## Overview
 
@@ -13,12 +13,42 @@ curl -fsSL https://raw.githubusercontent.com/Sebailla/SAI-toolbox/main/install.s
 init-projects
 ```
 
-The installer will ask for:
+The installer asks for:
 1. Project name (alphanumeric, dashes, underscores only)
 2. Architecture choice (Modular or Hexagonal)
 3. AI agent (OpenCode, Claude Code, Cursor, Gemini CLI, or all)
 4. Graphify knowledge graph (optional)
 5. GGA automatic code review (detected if installed)
+
+## Git Workflow
+
+### Branch Structure
+
+```
+main (production - protected, only receives merges from develop)
+  ↑
+  │ Tag: v1.0.0, v1.1.0, v2.0.0
+  │
+develop (permanent work branch)
+  ↑
+  │ Each commit from feat/fix/chore
+  │
+feat/xxx, fix/xxx, chore/xxx (temporary feature branches)
+```
+
+### Automated Commit Script (git-c)
+
+```bash
+# From develop, create automated commit
+git c "add user login feature"
+
+# What it does:
+# 1. Detects change type (feat/fix/docs/chore/test)
+# 2. Creates branch from develop: feat/xxx
+# 3. Runs bun test --run
+# 4. Runs GGA code review (if installed)
+# 5. Creates commit with Conventional Commits format
+```
 
 ## Architecture Options
 
@@ -28,10 +58,10 @@ Organizes code by features/modules. Each module is self-contained with its own c
 
 ```
 src/modules/<name>/
-├── components/     # UI components
+├── components/     # UI components (no business logic)
 ├── services/       # Pure business logic (no React hooks)
-├── actions.ts     # Server Actions with Zod validation
-├── types.ts       # Module-specific types
+├── actions.ts      # Server Actions with Zod validation
+├── types.ts        # Module-specific types
 └── index.ts       # Public API
 ```
 
@@ -80,33 +110,66 @@ src/
 - Zod (validation)
 - Vitest + Playwright (testing)
 - Husky + Commitlint (git hooks)
+- Standard Version (semantic versioning)
 - JWT + bcryptjs (auth)
 
 ## Generated Files
 
-The scaffolding creates:
-- `.env.template` - Environment variables template
-- `prisma/schema.prisma` - Database schema
-- `.husky/` - Git hooks
-- `.github/workflows/release.yml` - CI/CD
-- `.vscode/settings.json` - Editor config
-- `AGENTS.md` - AI agent rules
-- `.agent/skills/` - Custom AI skills
+```
+proyecto/
+├── .env.template          # Environment variables template
+├── .env                    # (NOT committed - local config)
+├── prisma/schema.prisma    # Database schema
+├── CHANGELOG.md           # Changelog (Keep a Changelog format)
+├── VERSION                # Current version (1.0.0)
+├── .versionrc            # standard-version config
+├── .husky/               # Git hooks
+├── .github/workflows/    # CI/CD (health-gate + release)
+├── .vscode/settings.json  # VSCode config
+├── git-c                 # Automated commit script
+├── AGENTS.md             # AI agent rules
+├── CLAUDE.md / .cursorrules / GEMINI.md  # Per-agent rules
+└── .agent/skills/        # Custom AI skills
+```
+
+## Semantic Versioning
+
+```bash
+# Create release (bumps version, updates CHANGELOG, creates tag)
+bun run release
+
+# Version bump detection:
+# feat: → Minor (1.0.0 → 1.1.0)
+# fix: → Patch (1.0.0 → 1.0.1)
+# feat! or fix!: → Major (1.0.0 → 2.0.0)
+```
+
+## Conventional Commits
+
+```
+<type>: <description>
+
+Types: feat, fix, chore, docs, refactor, test, perf, ci
+```
 
 ## Important Rules
 
 1. **Communication:** Spanish (Rioplatense) with "fundamentación" - always explain WHY and HOW
 2. **Architecture:** STRICT adherence to chosen pattern - decline violations
-3. **SDD:** Spec-Driven Development workflow mandatory for all features
-4. **GGA:** Code review runs automatically on every commit if installed
-5. **Commits:** Conventional Commits strict format
+3. **Git Workflow:** Always work from develop, use `git c` for commits
+4. **SDD:** Spec-Driven Development workflow mandatory for all features
+5. **GGA:** Code review runs automatically on every commit if installed
+6. **Commits:** Conventional Commits strict format
+7. **Tests:** All features must have unit tests
 
 ## Documentation
 
-- `.docs/Arquitectura-Modular.md` - Modular architecture guide
-- `.docs/Arquitectura-Hexagonal.md` - Hexagonal architecture guide
+- `.docs/Arquitectura-Modular.md` - Modular Vertical Slicing guide
+- `.docs/Arquitectura-Hexagonal.md` - Hexagonal Architecture guide
 - `.docs/Guia-Rapida.md` - Quick start guide
+- `.docs/Git-Workflow.md` - Git workflow detailed documentation
 - `README.md` - Project overview
+- `llms.txt` - This file
 
 ## Post-Installation
 
@@ -128,6 +191,23 @@ JWT_SECRET="your-super-secret-jwt-token-change-in-production"
 JWT_EXPIRES_IN="7d"
 APP_URL="http://localhost:3000"
 NODE_ENV="development"
+```
+
+## Available Commands
+
+```bash
+bun dev              # Development
+bun build            # Production build
+bun test             # Unit tests (Vitest)
+bun test:e2e         # E2E tests (Playwright)
+bun lint             # Linting
+bun db:generate      # Generate Prisma client
+bun db:migrate       # Run migrations
+bun db:push          # Push to DB (development)
+bun db:seed          # Seed data
+bun db:studio        # Prisma UI
+bun run release      # Create release (semver)
+git c "message"      # Automated commit from develop
 ```
 
 ## Author

@@ -13,6 +13,8 @@ Crea un proyecto completo con Next.js, TypeScript, Tailwind CSS v4, Prisma + Pos
 | **Next.js 16** | App Router, TypeScript, Tailwind CSS v4 |
 | **Stack SAI** | Prisma + PostgreSQL, Zod, Vitest, Playwright, Husky |
 | **Arquitecturas** | Modular Vertical Slicing o Hexagonal (Clean Architecture) |
+| **Git Workflow** | Ramas auto: main → develop → feat/fix/docs/chore |
+| **Versionado** | Semantic Versioning con standard-version y CHANGELOG |
 | **Git hooks** | Commitlint + Conventional Commits + branch naming + GGA |
 | **Skills para IA** | Documentación automática y planificación |
 | **Graphify** | Knowledge graph para arquitectura (opcional) |
@@ -41,31 +43,49 @@ curl -fsSL https://raw.githubusercontent.com/Sebailla/SAI-toolbox/main/init-proj
 
 ---
 
-## 🎯 Opciones
+## 🎯 Flujo de Creación
 
 El script es **completamente interactivo**. Solo ejecutá `init-projects` y te guiará paso a paso:
 
 ```
-  ╔═══════════════════════════════════════════════╗
-  ║   SAI Project Initializer                    ║
-  ║   Arquitectura Modular o Hexagonal           ║
-  ╚═══════════════════════════════════════════════╝
-
-  ▸ Paso 1 de 5 ─── Nombre del proyecto
-  ▸ Paso 2 de 5 ─── Arquitectura  
-  ▸ Paso 3 de 5 ─── Agente de IA
-  ▸ Paso 4 de 5 ─── Graphify
-  ▸ Paso 5 de 5 ─── Confirmar
+  ▸ Paso 1 ─── Nombre del proyecto
+  ▸ Paso 2 ─── Arquitectura (Modular o Hexagonal)  
+  ▸ Paso 3 ─── Agente de IA
+  ▸ Paso 4 ─── Graphify
+  ▸ Paso 5 ─── Confirmar
 ```
 
-### Preguntas interactivas
+---
 
-1. **Nombre del proyecto** - El nombre de la carpeta (solo letras, números, guiones)
-2. **Arquitectura** - Modular Vertical Slicing o Hexagonal (Clean Architecture)
-3. **Agente de IA** - OpenCode, Claude Code, Cursor, Gemini CLI o todos
-4. **Graphify** - Knowledge graph para arquitectura (opcional)
-5. **GGA** - Se detecta automáticamente si está instalado en el sistema
-6. **Confirmar** - Revisar resumen y crear proyecto
+## 📊 Git Workflow Automatizado
+
+```
+main ←───────────────────────────────────────── producción (protegida)
+  ↑                      ↑
+  │                      │ merge solo desde develop
+  │                      │
+develop ←── feat/mi-feature ─── fix/bug-fix ─── chore/update-deps
+                ↑
+                │ git c "mensaje" (crea rama + commit + GGA + tests)
+```
+
+### Comandos
+
+```bash
+# Crear commit automático (desde develop)
+git c "agrego login con JWT"
+
+# Help
+git c --help
+```
+
+### Qué hace `git c`:
+
+1. **Detecta el tipo** de cambio (feat/fix/docs/chore/test)
+2. **Crea la rama** desde develop: `feat/mi-nueva-feature`
+3. **Corre los tests**: `bun test --run`
+4. **Corre GGA review** (si está instalado)
+5. **Hace el commit** con Conventional Commit format
 
 ---
 
@@ -89,39 +109,28 @@ src/
 └── components/ui/        # Componentes UI genéricos
 ```
 
-**Reglas:**
-- Services NO pueden usar hooks ni importar componentes
-- Components NO pueden contener lógica de negocio
-- Lógica compartida va a `src/core/`
-
 ### Hexagonal (Clean Architecture)
 
 ```
 src/
-├── domain/              # Lógica de negocio pura (SIN dependencias externas)
-│   ├── entities/        # Entidades del dominio
-│   ├── value-objects/   # Objetos de valor
-│   ├── services/        # Servicios de dominio
-│   ├── events/          # Eventos de dominio
-│   ├── exceptions/       # Excepciones del dominio
-│   └── interfaces/       # Contratos (puertos de salida)
-├── application/         # Casos de uso (depende de Domain)
-│   ├── use-cases/       # Casos de uso
-│   ├── dto/             # Data Transfer Objects
-│   └── ports/           # Puertos de entrada/salida
-├── infrastructure/      # Adaptadores (implementa interfaces de Domain/Application)
-│   ├── persistence/     # Repositorios (Prisma)
-│   ├── http/            # Controladores, middleware
-│   ├── queue/           # Colas de mensajes
-│   └── external/        # Servicios externos
-└── shared/              # Utilidades compartidas
+├── domain/              # Lógica de negocio pura (SIN dependencias)
+│   ├── entities/
+│   ├── value-objects/
+│   ├── services/
+│   ├── events/
+│   ├── exceptions/
+│   └── interfaces/      # Contratos (puertos)
+├── application/         # Casos de uso
+│   ├── use-cases/
+│   ├── dto/
+│   └── ports/
+├── infrastructure/      # Adaptadores
+│   ├── persistence/    # Repositorios (Prisma)
+│   ├── http/           # Controladores, middleware
+│   ├── queue/
+│   └── external/
+└── shared/             # Utilidades compartidas
 ```
-
-**Reglas absolutas:**
-1. Domain NO puede importar de `application/`, `infrastructure/`, ni `shared/`
-2. Application NO puede importar de `infrastructure/`
-3. Todo en `infrastructure/` DEBE implementar interfaces de Domain/Application
-4. NINGÚN archivo de dominio puede tener imports de frameworks externos
 
 ---
 
@@ -144,12 +153,16 @@ src/
 
 ```
 proyecto/
-├── .env.template          # Variables de entorno (copiar a .env)
-├── prisma/
-│   └── schema.prisma      # Esquema de Prisma
+├── .env.template          # Variables de entorno
+├── .env                    # (NO commitear - tu config local)
+├── prisma/schema.prisma    # Esquema de base de datos
+├── CHANGELOG.md           # Historial de cambios
+├── VERSION                # Versión actual (1.0.0)
+├── .versionrc            # Config de standard-version
 ├── .husky/               # Git hooks
-├── .github/workflows/     # GitHub Actions
-├── .vscode/settings.json  # Configuración VSCode
+├── .github/workflows/    # GitHub Actions (health-gate + release)
+├── .vscode/settings.json  # Config VSCode
+├── git-c                 # Script de commit automatizado
 ├── AGENTS.md             # Reglas para agentes de IA
 ├── CLAUDE.md / .cursorrules / GEMINI.md  # Reglas por agente
 └── .agent/skills/        # Skills personalizados
@@ -167,7 +180,7 @@ bun install
 
 # 2. Configurar variables de entorno
 cp .env.template .env
-# Editar .env con tu URL de PostgreSQL
+# Editar DATABASE_URL con tu PostgreSQL
 
 # 3. Generar cliente Prisma
 bunx prisma generate
@@ -182,17 +195,77 @@ bun dev
 ### Variables de entorno (.env.template)
 
 ```env
-# Database
 DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?schema=public"
-
-# Auth
 JWT_SECRET="your-super-secret-jwt-token-change-in-production"
 JWT_EXPIRES_IN="7d"
-
-# App
 APP_URL="http://localhost:3000"
 NODE_ENV="development"
 ```
+
+---
+
+## 🔖 Versionado Semántico
+
+El proyecto usa **Semantic Versioning** con standard-version:
+
+```bash
+# Ver versión actual
+cat VERSION
+# 1.0.0
+
+# Crear release (bumps version, actualiza CHANGELOG, crea tag)
+bun run release
+
+# Formato de commits: tipo: descripción
+git c "agrego endpoint para usuarios"
+git c "fix: corrijo bug en login"
+```
+
+### Tipos de Commit
+
+| Tipo | Uso |
+|------|-----|
+| `feat` | Nuevas funcionalidades |
+| `fix` | Correcciones de bugs |
+| `chore` | Mantenimiento, deps, config |
+| `docs` | Documentación |
+| `refactor` | Refactoring sin cambiar funcionalidad |
+| `test` | Tests |
+| `perf` | Performance |
+| `ci` | CI/CD |
+
+---
+
+## 🤝 Workflow de Desarrollo
+
+```bash
+# 1. Desde develop, crear un commit
+git c "agrego módulo de usuarios"
+
+# 2. Push y crear PR
+git push -u origin feat/agrego-modulo-de-usuarios
+
+# 3. Merge a develop (vía PR o manualmente)
+git checkout develop
+git merge feat/agrego-modulo-de-usuarios
+
+# 4. Cuando esté listo para producción
+git checkout main
+git merge develop
+# O crear release:
+bun run release  # bumps a 1.1.0, actualiza CHANGELOG, tag v1.1.0
+```
+
+---
+
+## 📚 Documentación
+
+| Archivo | Descripción |
+|---------|-------------|
+| `.docs/Guia-Rapida.md` | Quick start y comandos |
+| `.docs/Arquitectura-Modular.md` | Guía de Modular Vertical Slicing |
+| `.docs/Arquitectura-Hexagonal.md` | Guía de Clean Architecture |
+| `.docs/Git-Workflow.md` | Workflow Git detallado |
 
 ---
 
