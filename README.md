@@ -28,62 +28,80 @@ Crea un proyecto completo con Next.js, TypeScript, Tailwind CSS v4, Prisma, y to
 curl -fsSL https://raw.githubusercontent.com/Sebailla/SAI-toolbox/main/install.sh | bash
 
 # Usar desde cualquier directorio
-init-projects mi-proyecto
+init-projects
 ```
 
 ### Uso directo (sin instalación)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Sebailla/SAI-toolbox/main/init-project.sh | bash -s -- mi-proyecto
+curl -fsSL https://raw.githubusercontent.com/Sebailla/SAI-toolbox/main/init-project.sh | bash
 ```
 
 ---
 
 ## 🎯 Opciones
 
-| Opción | Descripción |
-|--------|-------------|
-| `--agent` | Agente de IA: `opencode`, `claude`, `cursor`, `gemini`, `all` |
-| `--graphify` | Habilitar knowledge graph |
-| `--gga` | Habilitar Gentleman Guardian Angel (code review con IA) |
+El script es **completamente interactivo**. Solo ejecutá `init-projects` y te hará preguntas:
+
+1. **Nombre del proyecto** - El nombre de la carpeta
+2. **Arquitectura** - Modular o Hexagonal (Clean Architecture)
+3. **Agente de IA** - OpenCode, Claude, Cursor, Gemini o todos
+4. **Graphify** - Knowledge graph para arquitectura
+5. **GGA** - Code review con IA en cada commit
+6. **Confirmar** - Revisar y crear
 
 ### Ejemplos
 
 ```bash
-# Proyecto básico
-./init-project.sh mi-proyecto
+# Básico (te preguntará todo)
+init-projects
 
-# Con Graphify
-./init-project.sh mi-proyecto --graphify
-
-# Con todo: agente, Graphify y GGA
-./init-project.sh mi-proyecto --agent claude --graphify --gga
-
-# Para todos los agentes
-./init-project.sh mi-proyecto --agent all
+# Directo (sin instalación)
+curl -fsSL https://raw.githubusercontent.com/Sebailla/SAI-toolbox/main/init-project.sh | bash
 ```
 
 ---
 
-## 📦 Qué se crea
+## 📦 Estructuras disponibles
+
+### Modular Vertical Slicing
 
 ```
-mi-proyecto/
-├── src/
-│   ├── modules/           # Vertical slicing modules
-│   │   └── example/
-│   │       ├── components/
-│   │       ├── services/
-│   │       ├── actions.ts
-│   │       └── types.ts
-│   ├── core/             # Shared utilities
-│   └── components/ui/    # Generic UI components
-├── prisma/               # Database schema
-├── .husky/               # Git hooks
-├── .github/workflows/    # CI/CD
-├── AGENTS.md             # AI agent rules
-└── package.json
+src/
+├── modules/              # Features/módulos
+│   └── example/
+│       ├── components/
+│       ├── services/
+│       ├── actions.ts
+│       └── types.ts
+├── core/                 # Utilidades compartidas
+└── components/ui/        # UI genérica
 ```
+
+### Hexagonal (Clean Architecture)
+
+```
+src/
+├── domain/              # Lógica de negocio pura (sin dependencias)
+│   ├── entities/
+│   ├── value-objects/
+│   ├── services/
+│   ├── events/
+│   ├── exceptions/
+│   └── interfaces/      # Puertos (contratos)
+├── application/         # Casos de uso
+│   ├── use-cases/
+│   ├── dto/
+│   └── ports/           # Puertos de entrada/salida
+├── infrastructure/      # Adaptadores externos
+│   ├── persistence/     # Repositorios (Prisma)
+│   ├── http/            # Controladores, middleware
+│   ├── queue/           # Colas de mensajes
+│   └── external/        # Servicios externos
+└── shared/              # Utilidades compartidas
+```
+
+**Regla de dependencia:** Domain → Application → Infrastructure (nunca al revés)
 
 ---
 

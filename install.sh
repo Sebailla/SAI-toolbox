@@ -17,7 +17,7 @@ NC='\033[0m'
 
 echo -e "${CYAN}${BOLD}"
 echo "  ╔═══════════════════════════════════════╗"
-echo "  ║   SAI Toolbox Installer              ║"
+echo "  ║   SAI Toolbox Installer               ║"
 echo "  ╚═══════════════════════════════════════╝"
 echo -e "${NC}"
 
@@ -76,7 +76,6 @@ echo ""
 echo -e "${GREEN}✓${NC} Instalación completa!"
 echo ""
 echo -e "${BOLD}Uso:${NC}"
-echo "  ${CYAN}init-projects mi-proyecto${NC}"
-echo "  ${CYAN}init-projects mi-proyecto --agent claude --graphify --gga${NC}"
+echo "  ${CYAN}init-projects${NC}"
 echo ""
-echo -e "${DIM}Para ver todas las opciones: init-projects --help${NC}"
+echo -e "${DIM}El script te hará preguntas interactivas para crear tu proyecto.${NC}"
