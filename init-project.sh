@@ -1113,9 +1113,19 @@ fi
 
 # Verificar que estamos en develop
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+# Verificar que la rama develop existe
+if ! git show-ref --verify --quiet refs/heads/develop 2>/dev/null; then
+    echo -e "${RED}✗${NC} La rama ${YELLOW}develop${NC} no existe."
+    echo "  Ejecutá ${CYAN}git checkout -b develop${NC} para crearla."
+    exit 1
+fi
+
+# Verificar que estamos en develop
 if [[ "$CURRENT_BRANCH" != "develop" ]]; then
     echo -e "${RED}✗${NC} Necesitás estar en la rama ${YELLOW}develop${NC} para crear un commit."
     echo "  Rama actual: $CURRENT_BRANCH"
+    echo "  Ejecutá ${CYAN}git checkout develop${NC} para cambiarte."
     exit 1
 fi
 
@@ -1159,6 +1169,14 @@ slugify() {
 # Ejecutar
 TYPE=$(detect_type)
 BRANCH_NAME="${TYPE}/$(slugify "$COMMIT_MSG")"
+
+# Verificar que la rama no exista ya
+if git show-ref --verify --quiet "refs/heads/$BRANCH_NAME" 2>/dev/null; then
+    echo -e "${RED}✗${NC} La rama ${YELLOW}$BRANCH_NAME${NC} ya existe."
+    echo "  Usá ${CYAN}git checkout $BRANCH_NAME${NC} para trabajar en ella,"
+    echo "  o usá otro mensaje para crear una nueva rama."
+    exit 1
+fi
 
 echo -e "${CYAN}┌─────────────────────────────────────────┐${NC}"
 echo -e "${CYAN}│${NC}  ${BOLD}Git Commit Automatizado${NC}"
