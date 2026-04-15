@@ -46,18 +46,30 @@ fi
 echo -e "${CYAN}[2/3]${NC} Haciendo ejecutable..."
 chmod +x "$INSTALL_DIR/init-projects"
 
-echo -e "${CYAN}[3/3]${NC} Verificando..."
+echo -e "${CYAN}[3/3]${NC} Configurando PATH..."
 
-# Verificar si está en PATH
+# Detectar shell profile
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    SHELL_PROFILE="$HOME/.zshrc"
+else
+    SHELL_PROFILE="$HOME/.bashrc"
+fi
+
+# Agregar al PATH si no está
 if [[ ":$PATH:" == *":$INSTALL_DIR:"* ]]; then
     echo -e "${GREEN}✓${NC} $INSTALL_DIR ya está en tu PATH"
 else
-    echo -e "${YELLOW}!${NC} Agregá $INSTALL_DIR a tu PATH"
-    echo ""
-    echo -e "${BOLD}Agregá esta línea a tu ~/.zshrc o ~/.bashrc:${NC}"
-    echo ""
-    echo -e "  ${CYAN}export PATH=\"\$PATH:$INSTALL_DIR\"${NC}"
-    echo ""
+    # Agregar al shell profile
+    if ! grep -q "$INSTALL_DIR" "$SHELL_PROFILE" 2>/dev/null; then
+        echo "" >> "$SHELL_PROFILE"
+        echo "# SAI Toolbox" >> "$SHELL_PROFILE"
+        echo "export PATH=\"\$PATH:$INSTALL_DIR\"" >> "$SHELL_PROFILE"
+        echo -e "${GREEN}✓${NC} PATH agregado a $SHELL_PROFILE"
+    else
+        echo -e "${GREEN}✓${NC} PATH ya configurado en $SHELL_PROFILE"
+    fi
+    # Exportar para la sesión actual
+    export PATH="$PATH:$INSTALL_DIR"
 fi
 
 echo ""
