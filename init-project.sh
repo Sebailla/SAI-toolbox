@@ -975,6 +975,176 @@ EOF
 }
 
 # ============================================================================
+# Git Workflow Automatizado
+# ============================================================================
+
+setup_git_workflow() {
+    log_info "Configurando Git workflow automatizado..."
+
+    # Crear script de commit automático
+    cat > git-c <<'GITCOMMIT'
+#!/usr/bin/env bash
+#
+# Git Commit Automatizado
+# Uso: git-c "mensaje del commit"
+#
+# Automáticamente:
+# 1. Detecta el tipo de cambio según los archivos modificados
+# 2. Crea una rama desde develop con el formato: tipo/nombre
+# 3. Hace el commit en esa rama
+#
+# Tipos detectados:
+#   feat: nuevos archivos en src/ (excluye components/ui)
+#   fix: archivos en src/ con fix, hotfix, patch en nombre
+#   chore: config, scripts, deps
+#   docs: archivos .md
+#   refactor: cambios en archivos existentes sin features
+#   test: archivos .test.ts, .spec.ts
+#
+
+set -e
+
+# Colores
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+CYAN='\033[0;36m'
+YELLOW='\033[0;33m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+# Help
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    echo -e "${BOLD}Git Commit Automatizado${NC}"
+    echo ""
+    echo -e "${CYAN}Uso:${NC}  git-c \"mensaje del commit\""
+    echo ""
+    echo -e "El script detecta el tipo de cambio y crea la rama automáticamente."
+    echo ""
+    echo -e "${CYAN}Aliases útiles:${NC}"
+    echo "  gc  = git-c (commit rápido)"
+    echo "  gca = git-c --amend (ammend)"
+    echo "  gcp = git-c --push (commit + push)"
+    echo ""
+    exit 0
+fi
+
+# Verificar que estamos en develop
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [[ "$CURRENT_BRANCH" != "develop" ]]; then
+    echo -e "${RED}✗${NC} Necesitás estar en la rama ${YELLOW}develop${NC} para crear un commit."
+    echo "  Rama actual: $CURRENT_BRANCH"
+    exit 1
+fi
+
+# Mensaje obligatorio
+if [[ -z "$1" ]]; then
+    echo -e "${RED}✗${NC} Necesitás proporcionar un mensaje de commit."
+    echo "  Uso: git-c \"tu mensaje aquí\""
+    exit 1
+fi
+
+COMMIT_MSG="$1"
+
+# Detectar tipo de cambio
+detect_type() {
+    # Archivos cambiados
+    CHANGED=$(git diff --cached --name-only)
+    UNTRACKED=$(git ls-files --others --exclude-standard)
+
+    if echo "$CHANGED $UNTRACKED" | grep -qE "\.(test|spec)\.(ts|tsx|js|jsx)$"; then
+        echo "test"
+    elif echo "$CHANGED $UNTRACKED" | grep -qE "^docs/|\.md$"; then
+        echo "docs"
+    elif echo "$CHANGED $UNTRACKED" | grep -qE "^src/"; then
+        if echo "$COMMIT_MSG" | grep -qiE "^fix|^hotfix|^patch"; then
+            echo "fix"
+        else
+            echo "feat"
+        fi
+    elif echo "$CHANGED $UNTRACKED" | grep -qE "^package\.json$|^bun\.lock$|^tsconfig|^next\.config|^prisma/"; then
+        echo "chore"
+    else
+        echo "chore"
+    fi
+}
+
+# Generar nombre de rama desde el mensaje
+slugify() {
+    echo "$1" | sed -E 's/[^a-zA-Z0-9]+/-/g' | sed -E 's/^-+|-+$//g' | tr '[:upper:]' '[:lower:]'
+}
+
+# Ejecutar
+TYPE=$(detect_type)
+BRANCH_NAME="${TYPE}/$(slugify "$COMMIT_MSG")"
+
+echo -e "${CYAN}┌─────────────────────────────────────────┐${NC}"
+echo -e "${CYAN}│${NC}  ${BOLD}Git Commit Automatizado${NC}"
+echo -e "${CYAN}└─────────────────────────────────────────┘${NC}"
+echo ""
+echo -e "  ${YELLOW}▸ Tipo:${NC}    ${GREEN}$TYPE${NC}"
+echo -e "  ${YELLOW}▸ Rama:${NC}    ${CYAN}$BRANCH_NAME${NC}"
+echo -e "  ${YELLOW}▸ Msg:${NC}     $COMMIT_MSG"
+echo ""
+
+# Verificar cambios ( unstaged + staged + untracked )
+if ! git diff --quiet && [[ -z "$(git ls-files --others --exclude-standard)" ]]; then
+    echo -e "  ${RED}✗${NC} No hay cambios para commitear"
+    exit 1
+fi
+echo -e "  ${GREEN}✓${NC} Hay cambios para commitear"
+
+# Stagear todo
+git add -A
+
+# Ejecutar tests (si existen)
+if [[ -f "package.json" ]] && grep -q '"test"' package.json; then
+    echo ""
+    echo -e "  ${CYAN}▸ Corriendo tests...${NC}"
+    if ! bun test --run 2>/dev/null; then
+        echo -e "  ${RED}✗${NC} Tests fallaron. Corregí antes de commitear."
+        exit 1
+    fi
+    echo -e "  ${GREEN}✓${NC} Tests OK"
+fi
+
+# Ejecutar GGA si está instalado
+if command -v gga &>/dev/null; then
+    echo ""
+    echo -e "  ${CYAN}▸ Code review con GGA...${NC}"
+    if ! gga run; then
+        echo -e "  ${RED}✗${NC} GGA encontró errores. Corregí antes de commitear."
+        exit 1
+    fi
+    echo -e "  ${GREEN}✓${NC} GGA OK"
+fi
+
+# Crear rama y commit
+echo ""
+echo -e "  ${CYAN}▸ Creando rama y commit...${NC}"
+git checkout -b "$BRANCH_NAME"
+git commit -m "${TYPE}: ${COMMIT_MSG}"
+
+echo ""
+echo -e "${GREEN}✓${NC} Commit creado en rama ${CYAN}$BRANCH_NAME${NC}"
+echo ""
+echo -e "${DIM}Próximos pasos:${NC}"
+echo -e "  ${CYAN}git push -u origin $BRANCH_NAME${NC}  # Push y crear PR"
+echo -e "  ${CYAN}git checkout develop${NC}              # Volver a develop"
+GITCOMMIT
+
+    chmod +x git-c
+
+    # Configurar git alias
+    git config alias.c "!bash git-c"
+
+    log_success "Git workflow configurado"
+    echo ""
+    echo -e "  ${CYAN}Comandos disponibles:${NC}"
+    echo -e "    ${YELLOW}git c${NC} \"mensaje\"   - Commit rápido automático"
+    echo -e "    ${YELLOW}git c -h${NC}           - Ver ayuda"
+}
+
+# ============================================================================
 # Día Cero
 # ============================================================================
 
@@ -1110,6 +1280,7 @@ main() {
     setup_scripts
     setup_gitignore
     setup_git_initial
+    setup_git_workflow
     setup_graphify
     setup_gga
 
@@ -1122,7 +1293,11 @@ main() {
     log_info "Próximos pasos:"
     echo "  cd $PROJECT_NAME"
     echo "  bun install"
-    echo "  git checkout -b feat/nombre-tarea"
+    echo "  git checkout develop"
+    echo "  bun dev"
+    echo ""
+    echo "  ${DIM}Para crear un commit automático:${NC}"
+    echo "  ${CYAN}git c \"tu mensaje del commit\"${NC}"
     echo ""
 
     # Desregistrar trap - todo salió bien
