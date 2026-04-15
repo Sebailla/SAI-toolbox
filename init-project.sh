@@ -438,6 +438,24 @@ setup_agents_md() {
         cat > AGENTS.md <<'EOF'
 # Project Rules
 
+## 🗣️ Comunicación (OBLIGATORIO)
+
+**Idioma:** Español Rioplatense (voseo). Uso obligatorio en todas las interacciones.
+
+**Regla de Fundamentación:**
+- NUNCA respondas con solo el "qué". Siempre incluye:
+  - **POR QUÉ:** Explicá la razón técnica o de diseño detrás de la decisión.
+  - **CÓMO:** Mostrá o explicá la implementación concreta.
+- Si no entendés algo, PREGUNTÁ. No infles ni supongas.
+
+**Estructura de respuestas:**
+```
+Respuesta breve + concreción.
+
+**Por qué:** [razón técnica/de negocio]
+**Cómo:** [implementación o ejemplo]
+```
+
 ## Arquitectura: Hexagonal (Clean Architecture)
 - **Domain** (`src/domain/`): Entidades, value objects, servicios de dominio. SIN dependencias externas.
 - **Application** (`src/application/`): Use cases, DTOs, puertos de entrada/salida.
@@ -457,14 +475,53 @@ setup_agents_md() {
 - Tests unitarios con Vitest.
 - Conventional Commits estrictos.
 
-## Communication
-- Idioma del código: Inglés.
-- Comentarios y documentación: Español.
-- Feedback del agente: Español Rioplatense (voseo).
+## 📚 Consultas de Documentación
+
+**ANTES de responder sobre frameworks o librerías:**
+1. Consultá Context7 para obtener documentación oficial:
+   - `context7_resolve-library-id` para obtener el ID de la librería
+   - `context7_query-docs` para consultar la documentación
+
+2. SIEMPRE citá la fuente de Context7 en la respuesta.
+
+3. Si la información no está en Context7, buscá en la documentación oficial del proyecto.
+
+**Ejemplo de respuesta correcta:**
+```
+Para implementar validation en React, necesitás Zod.
+
+**Por qué:** Zod es el estándar de la industria para validación de esquemas en TypeScript,
+ofreciendo inferencia de tipos estáticos y runtime validation.
+
+**Cómo:** 
+\`\`\`typescript
+import { z } from 'zod';
+const schema = z.object({ name: z.string() });
+\`\`\`
+
+*Fuente: Context7 - zod*
 EOF
     else
         cat > AGENTS.md <<'EOF'
 # Project Rules
+
+## 🗣️ Comunicación (OBLIGATORIO)
+
+**Idioma:** Español Rioplatense (voseo). Uso obligatorio en todas las interacciones.
+
+**Regla de Fundamentación:**
+- NUNCA respondas con solo el "qué". Siempre incluye:
+  - **POR QUÉ:** Explicá la razón técnica o de diseño detrás de la decisión.
+  - **CÓMO:** Mostrá o explicá la implementación concreta.
+- Si no entendés algo, PREGUNTÁ. No infles ni supongas.
+
+**Estructura de respuestas:**
+```
+Respuesta breve + concreción.
+
+**Por qué:** [razón técnica/de negocio]
+**Cómo:** [implementación o ejemplo]
+```
 
 ## Arquitectura: Modular Vertical Slicing
 - Cada módulo en `src/modules/<nombre>/` debe tener: `components/`, `services/`, `actions.ts`, `types.ts`, `index.ts`.
@@ -479,6 +536,32 @@ EOF
 - Tailwind CSS v4 para estilos.
 - Tests unitarios con Vitest.
 - Conventional Commits estrictos.
+
+## 📚 Consultas de Documentación
+
+**ANTES de responder sobre frameworks o librerías:**
+1. Consultá Context7 para obtener documentación oficial:
+   - `context7_resolve-library-id` para obtener el ID de la librería
+   - `context7_query-docs` para consultar la documentación
+
+2. SIEMPRE citá la fuente de Context7 en la respuesta.
+
+3. Si la información no está en Context7, buscá en la documentación oficial del proyecto.
+
+**Ejemplo de respuesta correcta:**
+```
+Para implementar validation en React, necesitás Zod.
+
+**Por qué:** Zod es el estándar de la industria para validación de esquemas en TypeScript,
+ofreciendo inferencia de tipos estáticos y runtime validation.
+
+**Cómo:** 
+\`\`\`typescript
+import { z } from 'zod';
+const schema = z.object({ name: z.string() });
+\`\`\`
+
+*Fuente: Context7 - zod*
 EOF
     fi
 
