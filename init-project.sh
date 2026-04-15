@@ -242,6 +242,52 @@ check_dependencies() {
 }
 
 # ============================================================================
+# Timeout portable (macOS no tiene timeout, usa gtimeout o perl)
+# ============================================================================
+
+run_with_timeout() {
+    local seconds=$1
+    shift
+    local cmd=("$@")
+
+    # Intentar timeout nativo (Linux)
+    if command -v timeout &>/dev/null; then
+        timeout "${seconds}s" "${cmd[@]}"
+        return $?
+    fi
+
+    # Intentar gtimeout (macOS con GNU coreutils)
+    if command -v gtimeout &>/dev/null; then
+        gtimeout "${seconds}s" "${cmd[@]}"
+        return $?
+    fi
+
+    # Intentar timeout de perl (macOS)
+    if command -v perl &>/dev/null; then
+        perl -e '
+            use IPC::Open3;
+            use Symbol qw(gensym);
+            my $sigalrm = sub { die "timeout\n" };
+            my $secs = shift;
+            $SIG{ALRM} = $sigalrm;
+            alarm($secs);
+            eval {
+                my $pid = open3(my $in, my $out, my $err = gensym, @_);
+                waitpid($pid, 0);
+                alarm(0);
+                exit $? >> 8;
+            };
+            if ($@ eq "timeout\n") { exit 124 }
+            die $@ if $@;
+        ' "${seconds}" "${cmd[@]}"
+        return $?
+    fi
+
+    # Si nada funciona, ejecutar sin timeout
+    "${cmd[@]}"
+}
+
+# ============================================================================
 # Crear proyecto
 # ============================================================================
 
@@ -267,7 +313,7 @@ create_project() {
     git init -q -b main
 
     log_info "Scaffold Next.js (TypeScript, Tailwind v4, App Router, src/)..."
-    timeout 300 bunx create-next-app@latest . \
+    run_with_timeout 300 bunx create-next-app@latest . \
         --typescript \
         --tailwind \
         --eslint \
