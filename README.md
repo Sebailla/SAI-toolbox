@@ -23,10 +23,10 @@ Crea un proyecto completo con Next.js, TypeScript, Tailwind CSS v4, Prisma, y to
 
 ```bash
 # Instalación rápida
-curl -fsSL https://raw.githubusercontent.com/Gentleman-Programming/sai-toolbox/main/init-project.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Sebailla/SAI-toolbox/main/init-project.sh | bash
 
 # O descargar y ejecutar
-curl -fsSLO https://raw.githubusercontent.com/Gentleman-Programming/sai-toolbox/main/init-project.sh
+curl -fsSLO https://raw.githubusercontent.com/Sebailla/SAI-toolbox/main/init-project.sh
 chmod +x init-project.sh
 ./init-project.sh mi-proyecto
 ```
