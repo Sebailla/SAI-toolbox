@@ -1,0 +1,135 @@
+# SAI Toolbox
+
+## Overview
+
+SAI Toolbox is a command-line tool that scaffolds production-ready Next.js projects with enterprise architecture patterns. It provides two architectural choices: Modular Vertical Slicing or Hexagonal (Clean) Architecture.
+
+## Project Creation
+
+To create a new project:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Sebailla/SAI-toolbox/main/install.sh | bash
+init-projects
+```
+
+The installer will ask for:
+1. Project name (alphanumeric, dashes, underscores only)
+2. Architecture choice (Modular or Hexagonal)
+3. AI agent (OpenCode, Claude Code, Cursor, Gemini CLI, or all)
+4. Graphify knowledge graph (optional)
+5. GGA automatic code review (detected if installed)
+
+## Architecture Options
+
+### Modular Vertical Slicing
+
+Organizes code by features/modules. Each module is self-contained with its own components, services, actions, and types.
+
+```
+src/modules/<name>/
+├── components/     # UI components
+├── services/       # Pure business logic (no React hooks)
+├── actions.ts     # Server Actions with Zod validation
+├── types.ts       # Module-specific types
+└── index.ts       # Public API
+```
+
+**Rules:**
+- Services cannot use React hooks or import components
+- Components must delegate business logic to services
+- Shared logic goes to `src/core/`
+
+### Hexagonal (Clean Architecture)
+
+Strict separation between Domain, Application, and Infrastructure layers.
+
+```
+src/
+├── domain/           # Pure business logic (NO external dependencies)
+│   ├── entities/
+│   ├── value-objects/
+│   ├── services/
+│   ├── events/
+│   ├── exceptions/
+│   └── interfaces/   # Contracts (output ports)
+├── application/      # Use cases
+│   ├── use-cases/
+│   ├── dto/
+│   └── ports/
+├── infrastructure/   # External adapters
+│   ├── persistence/  # Prisma repositories
+│   ├── http/        # Controllers, middleware
+│   ├── queue/
+│   └── external/
+└── shared/          # Utilities
+```
+
+**Rules (STRICT):**
+- Domain cannot import from Application or Infrastructure
+- Application cannot import from Infrastructure
+- All Infrastructure must implement Domain/Application interfaces
+- No framework imports in Domain files
+
+## Stack
+
+- Next.js 16 (App Router)
+- TypeScript
+- Tailwind CSS v4
+- Prisma + PostgreSQL
+- Zod (validation)
+- Vitest + Playwright (testing)
+- Husky + Commitlint (git hooks)
+- JWT + bcryptjs (auth)
+
+## Generated Files
+
+The scaffolding creates:
+- `.env.template` - Environment variables template
+- `prisma/schema.prisma` - Database schema
+- `.husky/` - Git hooks
+- `.github/workflows/release.yml` - CI/CD
+- `.vscode/settings.json` - Editor config
+- `AGENTS.md` - AI agent rules
+- `.agent/skills/` - Custom AI skills
+
+## Important Rules
+
+1. **Communication:** Spanish (Rioplatense) with "fundamentación" - always explain WHY and HOW
+2. **Architecture:** STRICT adherence to chosen pattern - decline violations
+3. **SDD:** Spec-Driven Development workflow mandatory for all features
+4. **GGA:** Code review runs automatically on every commit if installed
+5. **Commits:** Conventional Commits strict format
+
+## Documentation
+
+- `.docs/Arquitectura-Modular.md` - Modular architecture guide
+- `.docs/Arquitectura-Hexagonal.md` - Hexagonal architecture guide
+- `.docs/Guia-Rapida.md` - Quick start guide
+- `README.md` - Project overview
+
+## Post-Installation
+
+```bash
+cd project-name
+bun install
+cp .env.template .env
+# Edit .env with your PostgreSQL connection
+bunx prisma generate
+bunx prisma migrate dev --name init
+bun dev
+```
+
+## Environment Variables (.env.template)
+
+```env
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?schema=public"
+JWT_SECRET="your-super-secret-jwt-token-change-in-production"
+JWT_EXPIRES_IN="7d"
+APP_URL="http://localhost:3000"
+NODE_ENV="development"
+```
+
+## Author
+
+Sebastián Illa
