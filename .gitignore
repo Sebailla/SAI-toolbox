@@ -23,8 +23,10 @@ graphify-out/
 test_output.txt
 bin/
 
-# Agent skills
-.agent/
+# Agent skills (allow AGENTS.md, ignore rest)
+.agent/*
+!.agent/AGENTS.md
+.agent/skills/
 
 # Environment (never commit real .env)
 .env

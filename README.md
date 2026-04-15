@@ -258,14 +258,39 @@ bun run release  # bumps a 1.1.0, actualiza CHANGELOG, tag v1.1.0
 
 ---
 
+## 🤖 Integración con Agentes de IA
+
+El proyecto incluye configuración para agentes de IA en `.agent/AGENTS.md`. Este archivo contiene:
+
+- **Stack tecnológico** del proyecto
+- **Reglas de código** (portabilidad shell, colores ANSI, sed compatible)
+- **Reglas de Git** (conventional commits, workflow de ramas)
+- **Workflow para agentes** (antes/después de hacer cambios)
+- **Comandos útiles**
+
+Cuando trabajes con un agente de IA en este proyecto, debe leer `.agent/AGENTS.md` primero.
+
+### Beneficios
+
+| Feature | Descripción |
+|---------|-------------|
+| **Contexto persistente** | El agente sabe las reglas del proyecto |
+| **Code review automático** | GGA revisa cada commit |
+| **Judgment Day** | Revisión adversarial opcional |
+| **Graphify** | Knowledge graph para entender la arquitectura |
+
+---
+
 ## 📚 Documentación
 
 | Archivo | Descripción |
 |---------|-------------|
+| `.agent/AGENTS.md` | Instrucciones para agentes de IA |
 | `.docs/Guia-Rapida.md` | Quick start y comandos |
 | `.docs/Arquitectura-Modular.md` | Guía de Modular Vertical Slicing |
 | `.docs/Arquitectura-Hexagonal.md` | Guía de Clean Architecture |
 | `.docs/Git-Workflow.md` | Workflow Git detallado |
+| `llms.txt` | Contexto optimizado para LLMs |
 
 ---
 
