@@ -326,7 +326,7 @@ create_project() {
     log_info "Instalando dependencias del stack..."
     run_with_timeout 120 bun add @prisma/client@latest lucide-react@latest clsx@latest tailwind-merge@latest \
         date-fns@latest zod@latest react-hot-toast@latest ioredis@latest \
-        bcryptjs@latest jsonwebtoken@latest || log_warn "Algunas dependencias no se instalaron"
+        bcryptjs@latest jsonwebtoken@latest dotenv@latest || log_warn "Algunas dependencias no se instalaron"
 
     run_with_timeout 120 bun add -d prisma@latest vitest@latest @testing-library/react@latest \
         @testing-library/dom@latest jsdom@latest @playwright/test@latest \
@@ -338,6 +338,26 @@ create_project() {
 
     log_info "Inicializando Prisma..."
     bunx prisma init || log_warn "Prisma init falló"
+
+    log_info "Configurando Prisma schema..."
+    cat > prisma/schema.prisma <<'EOF'
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Example {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+EOF
+    log_success "Prisma schema configurado"
 }
 
 # ============================================================================
@@ -955,6 +975,9 @@ setup_scripts() {
     bun pkg set scripts.db:seed="tsx prisma/seed.ts" 2>/dev/null || log_warn "No se pudo configurar scripts.db:seed"
     bun pkg set scripts.db:reset="prisma migrate reset --force && bun run db:seed" 2>/dev/null || log_warn "No se pudo configurar scripts.db:reset"
     bun pkg set scripts.release="standard-version" 2>/dev/null || log_warn "No se pudo configurar scripts.release"
+
+    log_info "Configurando overrides para evitar conflictos de dependencias..."
+    bun pkg set overrides.babel-plugin-react-compiler="^0.0.0-experimental-71f1f4c6-20240515" 2>/dev/null || log_warn "No se pudo configurar overrides"
 }
 
 # ============================================================================
@@ -965,26 +988,41 @@ setup_vitest() {
     log_info "Configurando Vitest en Strict TDD Mode..."
 
     cat > vitest.config.ts <<'EOF'
-import { defineConfig } from 'vitest/config'
+import { defineConfig, loadEnv } from 'vitest/config'
+import path from 'path'
 
-export default defineConfig({
-  test: {
-    dir: './src',
-    environment: 'node',
-    include: ['**/*.{test,spec}.{ts,tsx}'],
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  return {
+    test: {
+      dir: './src',
+      environment: 'node',
+      setupFiles: ['./vitest.setup.ts'],
+      include: ['**/*.{test,spec}.{ts,tsx}'],
+      coverage: {
+        provider: 'v8',
+        reporter: ['text', 'json', 'html'],
+      },
+      mode: 'strict',
+      passWithNoTests: true,
+      watch: false,
+      typecheck: {
+        enabled: true,
+        tsconfig: './tsconfig.json',
+      },
     },
-    mode: 'strict',
-    passWithNoTests: true,
-    watch: false,
-    typecheck: {
-      enabled: true,
-      tsconfig: './tsconfig.json',
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
     },
-  },
+  }
 })
+EOF
+
+    cat > vitest.setup.ts <<'EOF'
+import { config } from 'dotenv'
+config()
 EOF
 
     log_success "vitest.config.ts creado con Strict TDD Mode"
