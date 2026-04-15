@@ -71,12 +71,28 @@ chmod +x "$INSTALL_DIR/init-projects"
 
 log "${CYAN}[3/3]${NC} Configurando PATH...\n"
 
-# Detectar shell profile
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    SHELL_PROFILE="$HOME/.zshrc"
-else
-    SHELL_PROFILE="$HOME/.bashrc"
-fi
+# Detectar shell activo (no solo OS)
+SHELL_NAME=$(basename "$SHELL")
+case "$SHELL_NAME" in
+    zsh)
+        SHELL_PROFILE="$HOME/.zshrc"
+        ;;
+    bash)
+        # Bash puede usar .bashrc o .bash_profile en macOS
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            SHELL_PROFILE="$HOME/.bash_profile"
+        else
+            SHELL_PROFILE="$HOME/.bashrc"
+        fi
+        ;;
+    fish)
+        SHELL_PROFILE="$HOME/.config/fish/config.fish"
+        ;;
+    *)
+        # Fallback
+        SHELL_PROFILE="$HOME/.profile"
+        ;;
+esac
 
 # Agregar al PATH si no está
 if [[ ":$PATH:" == *":$INSTALL_DIR:"* ]]; then
