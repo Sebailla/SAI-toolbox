@@ -13,6 +13,7 @@ GREEN=$'\033[0;32m'
 YELLOW=$'\033[0;33m'
 CYAN=$'\033[0;36m'
 MAGENTA=$'\033[0;35m'
+WHITE=$'\033[0;37m'
 BOLD=$'\033[1m'
 DIM=$'\033[2m'
 NC=$'\033[0m'
@@ -67,10 +68,15 @@ print_banner() {
 }
 
 select_project_name() {
-    log "${BOLD}1/5${NC} - Nombre del proyecto\n"
-    log "${DIM}Ingresá el nombre del proyecto (ej: mi-app, api-rest)${NC}\n"
     echo ""
-    read -r -p "Nombre: " PROJECT_NAME
+    log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    log "${BOLD}${CYAN}  ▸ Paso 1 de 5 ─── Nombre del proyecto${NC}"
+    log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    log "${DIM}Ingresá el nombre para tu proyecto (sin espacios)${NC}"
+    echo ""
+    read -r -p "   └─►  " PROJECT_NAME
+    echo ""
 
     if [ -z "$PROJECT_NAME" ]; then
         log_error "El nombre no puede estar vacío"
@@ -80,7 +86,7 @@ select_project_name() {
 
     # Sanitizar nombre: solo letras, números, guiones y guiones bajos
     if [[ ! "$PROJECT_NAME" =~ ^[a-zA-Z0-9_-]+$ ]]; then
-        log_error "El nombre solo puede contener letras, números, guiones (-) y guiones bajos (_)"
+        log_error "Solo letras, números, guiones (-) y guiones bajos (_)"
         select_project_name
         return
     fi
@@ -91,41 +97,59 @@ select_project_name() {
         select_project_name
         return
     fi
+
+    log "${GREEN}  ✓${NC} Proyecto: ${BOLD}$PROJECT_NAME${NC}"
 }
 
 select_architecture() {
     echo ""
-    log "${BOLD}2/5${NC} - Arquitectura\n"
-    log "${DIM}Elegí el tipo de arquitectura para el proyecto${NC}\n"
+    log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    log "${BOLD}${CYAN}  ▸ Paso 2 de 5 ─── Arquitectura${NC}"
+    log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-    log "  ${CYAN}1${NC}) Modular Vertical Slicing\n"
-    log "      Estructura por features/módulos con components, services, actions\n"
+    log "${DIM}Elegí el tipo de arquitectura para tu proyecto${NC}"
     echo ""
-    log "  ${CYAN}2${NC}) Hexagonal (Clean Architecture)\n"
-    log "      Domain → Application → Infrastructure (separación extrema)\n"
+    log "${YELLOW}  ┌─────────────────────────────────────────────┐${NC}"
+    log "${YELLOW}  │${NC}  ${BOLD}1${NC}) ${GREEN}Modular Vertical Slicing${NC}                    ${YELLOW}│${NC}"
+    log "${YELLOW}  │${NC}     Estructura por features/módulos           ${YELLOW}│${NC}"
+    log "${YELLOW}  │${NC}     components, services, actions              ${YELLOW}│${NC}"
+    log "${YELLOW}  └─────────────────────────────────────────────┘${NC}"
     echo ""
-    read -r -p "Elegí [1-2]: " ARCH_CHOICE
+    log "${YELLOW}  ┌─────────────────────────────────────────────┐${NC}"
+    log "${YELLOW}  │${NC}  ${BOLD}2${NC}) ${MAGENTA}Hexagonal (Clean Architecture)${NC}             ${YELLOW}│${NC}"
+    log "${YELLOW}  │${NC}     Domain → Application → Infrastructure     ${YELLOW}│${NC}"
+    log "${YELLOW}  │${NC}     Separación extrema del negocio            ${YELLOW}│${NC}"
+    log "${YELLOW}  └─────────────────────────────────────────────┘${NC}"
+    echo ""
+    read -r -p "   └─►  " ARCH_CHOICE
+    echo ""
 
     case "$ARCH_CHOICE" in
         1) ARCHITECTURE="modular" ;;
         2) ARCHITECTURE="hexagonal" ;;
         *) log_warn "Opción inválida. Usando Modular."; ARCHITECTURE="modular" ;;
     esac
-    log_success "Arquitectura: $ARCHITECTURE"
+    log "${GREEN}  ✓${NC} Arquitectura: ${BOLD}$ARCHITECTURE${NC}"
 }
 
 select_agent() {
     echo ""
-    log "${BOLD}3/5${NC} - Agente de IA\n"
-    log "${DIM}Elegí el agente de IA principal para este proyecto${NC}\n"
+    log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    log "${BOLD}${CYAN}  ▸ Paso 3 de 5 ─── Agente de IA${NC}"
+    log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-    log "  ${CYAN}1${NC}) OpenCode\n"
-    log "  ${CYAN}2${NC}) Claude Code\n"
-    log "  ${CYAN}3${NC}) Cursor\n"
-    log "  ${CYAN}4${NC}) Gemini CLI\n"
-    log "  ${CYAN}5${NC}) Todos (inyecta reglas para todos)\n"
+    log "${DIM}Elegí el agente de IA principal para este proyecto${NC}"
     echo ""
-    read -r -p "Elegí [1-5]: " AGENT_CHOICE
+    log "${YELLOW}  ┌─────────────────────────────────────────────┐${NC}"
+    log "${YELLOW}  │${NC}  ${BOLD}1${NC}) ${CYAN}OpenCode${NC}                                  ${YELLOW}│${NC}"
+    log "${YELLOW}  │${NC}  ${BOLD}2${NC}) ${CYAN}Claude Code${NC}                              ${YELLOW}│${NC}"
+    log "${YELLOW}  │${NC}  ${BOLD}3${NC}) ${CYAN}Cursor${NC}                                   ${YELLOW}│${NC}"
+    log "${YELLOW}  │${NC}  ${BOLD}4${NC}) ${CYAN}Gemini CLI${NC}                               ${YELLOW}│${NC}"
+    log "${YELLOW}  │${NC}  ${BOLD}5${NC}) ${CYAN}Todos${NC} (inyecta reglas para todos)          ${YELLOW}│${NC}"
+    log "${YELLOW}  └─────────────────────────────────────────────┘${NC}"
+    echo ""
+    read -r -p "   └─►  " AGENT_CHOICE
+    echo ""
 
     case "$AGENT_CHOICE" in
         1) TARGET_AGENT="opencode" ;;
@@ -135,18 +159,24 @@ select_agent() {
         5) TARGET_AGENT="all" ;;
         *) log_warn "Opción inválida. Usando OpenCode."; TARGET_AGENT="opencode" ;;
     esac
-    log_success "Agente: $TARGET_AGENT"
+    log "${GREEN}  ✓${NC} Agente: ${BOLD}$TARGET_AGENT${NC}"
 }
 
 select_graphify() {
     echo ""
-    log "${BOLD}4/5${NC} - Graphify (Knowledge Graph)\n"
-    log "${DIM}Graphify genera un grafo de conocimiento del proyecto${NC}\n"
+    log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    log "${BOLD}${CYAN}  ▸ Paso 4 de 5 ─── Graphify (Knowledge Graph)${NC}"
+    log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-    log "  ${CYAN}1${NC}) Sí - Habilitar Graphify\n"
-    log "  ${CYAN}2${NC}) No - Omitir Graphify\n"
+    log "${DIM}Graphify genera un grafo de conocimiento del proyecto${NC}"
     echo ""
-    read -r -p "Elegí [1-2]: " GRAPHIFY_CHOICE
+    log "${YELLOW}  ┌─────────────────────────────────────────────┐${NC}"
+    log "${YELLOW}  │${NC}  ${BOLD}1${NC}) ${GREEN}Sí - Habilitar Graphify${NC}                    ${YELLOW}│${NC}"
+    log "${YELLOW}  │${NC}  ${BOLD}2${NC}) ${RED}No - Omitir Graphify${NC}                        ${YELLOW}│${NC}"
+    log "${YELLOW}  └─────────────────────────────────────────────┘${NC}"
+    echo ""
+    read -r -p "   └─►  " GRAPHIFY_CHOICE
+    echo ""
 
     case "$GRAPHIFY_CHOICE" in
         1) USE_GRAPHIFY="yes" ;;
@@ -154,33 +184,38 @@ select_graphify() {
         *) USE_GRAPHIFY="no" ;;
     esac
     if [ "$USE_GRAPHIFY" = "yes" ]; then
-        log_success "Graphify: habilitado"
+        log "${GREEN}  ✓${NC} Graphify: ${GREEN}habilitado${NC}"
     else
-        log_info "Graphify: omitido"
+        log "${DIM}  ○${NC} Graphify: omitido${NC}"
     fi
 
     # GGA se detecta automáticamente si está instalado
     if command -v gga &>/dev/null; then
         echo ""
-        log "${BOLD}GGA:${NC}            Detectado y configurado automáticamente\n"
+        log "${GREEN}  ✓${NC} GGA: ${GREEN}detectado y configurado automáticamente${NC}"
     fi
 }
 
 confirm_setup() {
     echo ""
-    log "${BOLD}5/5${NC} - Confirmar configuración\n"
+    log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    log "${BOLD}${CYAN}  ▸ Paso 5 de 5 ─── Confirmar${NC}"
+    log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-    log "  ${CYAN}Proyecto:${NC}      $PROJECT_NAME\n"
-    log "  ${CYAN}Arquitectura:${NC}   $ARCHITECTURE\n"
-    log "  ${CYAN}Agente:${NC}         $TARGET_AGENT\n"
-    log "  ${CYAN}Graphify:${NC}       $USE_GRAPHIFY\n"
+    log "${DIM}Resumen de tu proyecto:${NC}"
+    echo ""
+    log "${YELLOW}  ┌─────────────────────────────────────────────┐${NC}"
+    log "${YELLOW}  │${NC}  ${BOLD}Proyecto:${NC}      ${GREEN}$PROJECT_NAME${NC}                       ${YELLOW}│${NC}"
+    log "${YELLOW}  │${NC}  ${BOLD}Arquitectura:${NC}   ${CYAN}$ARCHITECTURE${NC}                      ${YELLOW}│${NC}"
+    log "${YELLOW}  │${NC}  ${BOLD}Agente:${NC}         ${MAGENTA}$TARGET_AGENT${NC}                        ${YELLOW}│${NC}"
+    log "${YELLOW}  │${NC}  ${BOLD}Graphify:${NC}       ${WHITE}$USE_GRAPHIFY${NC}                         ${YELLOW}│${NC}"
     if command -v gga &>/dev/null; then
-        log "  ${CYAN}GGA:${NC}            Automático (detectado)\n"
-    else
-        log "  ${CYAN}GGA:${NC}            No detectado (opcional)\n"
+        log "${YELLOW}  │${NC}  ${BOLD}GGA:${NC}            ${GREEN}Automático${NC}                        ${YELLOW}│${NC}"
     fi
+    log "${YELLOW}  └─────────────────────────────────────────────┘${NC}"
     echo ""
-    read -r -p "Confirmar y crear proyecto? [s/n]: " CONFIRM
+    read -r -p "   └─►  Confirmar y crear proyecto? [${GREEN}s${NC}/${RED}n${NC}]: " CONFIRM
+    echo ""
 
     if [[ ! "$CONFIRM" =~ ^[Ss]$ ]]; then
         log_info "Operación cancelada."
