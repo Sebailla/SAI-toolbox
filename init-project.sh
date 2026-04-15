@@ -1853,9 +1853,12 @@ EOF
 # Git ignore
 # ============================================================================
 
-setup_gitignore() {
-    log_info "Enriqueciendo .gitignore..."
-    cat >> .gitignore <<'EOF'
+enrich_gitignore() {
+    log_info "Enriqueciendo .gitignore según el tipo de proyecto..."
+
+    case "$PROJECT_TYPE" in
+        frontend-next)
+            cat >> .gitignore <<'EOF'
 
 # =========================
 # SAI Ecosistema
@@ -1867,7 +1870,160 @@ designs/
 design-md/
 graphify-out/
 .gga
+
+# =========================
+# Next.js
+# =========================
+node_modules/
+.next/
+out/
+*.log
+# Notion export artifacts
+*.ldes.json
 EOF
+            ;;
+        frontend-vite)
+            cat >> .gitignore <<'EOF'
+
+# =========================
+# SAI Ecosistema
+# =========================
+.agent/
+plans/
+specs/
+designs/
+design-md/
+graphify-out/
+.gga
+
+# =========================
+# Vite
+# =========================
+node_modules/
+dist/
+dist-ssr/
+*.local
+# Notion export artifacts
+*.ldes.json
+EOF
+            ;;
+        backend)
+            if [ "$BACKEND_TYPE" = "nestjs" ]; then
+                cat >> .gitignore <<'EOF'
+
+# =========================
+# SAI Ecosistema
+# =========================
+.agent/
+plans/
+specs/
+designs/
+design-md/
+graphify-out/
+.gga
+
+# =========================
+# NestJS
+# =========================
+dist/
+node_modules/
+build/
+.env
+.env.*
+!.env.example
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.DS_Store
+*.local
+coverage/
+.nyc_output/
+# Test artifacts
+*.lcov
+# Notion export artifacts
+*.ldes.json
+EOF
+            else
+                cat >> .gitignore <<'EOF'
+
+# =========================
+# SAI Ecosistema
+# =========================
+.agent/
+plans/
+specs/
+designs/
+design-md/
+graphify-out/
+.gga
+
+# =========================
+# Go
+# =========================
+bin/
+tmp/
+vendor/
+*.exe
+*.exe~
+*.dll
+*.so
+*.a
+*.out
+*.test
+*.prof
+.env
+.env.*
+!.env.example
+.DS_Store
+# Test artifacts
+coverage.out
+coverage.html
+# Notion export artifacts
+*.ldes.json
+EOF
+            fi
+            ;;
+        monorepo)
+            cat >> .gitignore <<'EOF'
+
+# =========================
+# SAI Ecosistema
+# =========================
+.agent/
+plans/
+specs/
+designs/
+design-md/
+graphify-out/
+.gga
+
+# =========================
+# Monorepo
+# =========================
+node_modules/
+.next/
+out/
+dist/
+build/
+apps/web/node_modules/
+apps/api/node_modules/
+packages/*/node_modules/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+*.local
+coverage/
+.nyc_output/
+*.lcov
+# Notion export artifacts
+*.ldes.json
+EOF
+            ;;
+    esac
 }
 
 # ============================================================================
@@ -2265,7 +2421,7 @@ main() {
         setup_vitest
     fi
 
-    setup_gitignore
+    enrich_gitignore
     setup_git_initial
     setup_versioning
     setup_git_workflow
