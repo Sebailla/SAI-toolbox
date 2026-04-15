@@ -31,10 +31,10 @@ log_error()   { log "${RED}${BOLD}[ERROR]${NC}  $*\\n" >&2; }
 ORIGINAL_DIR=$(pwd)
 PROJECT_CREATED=0
 CLEANUP_DONE=0
-# FIX 1: Track original exit code to distinguish user cancel from error
-ORIGINAL_EXIT_CODE=0
 
 cleanup() {
+    local exit_code=${1:-0}
+    cd "$ORIGINAL_DIR"
     # Evitar ejecución múltiple del cleanup
     if [ "$CLEANUP_DONE" -eq 1 ]; then
         return
@@ -49,13 +49,13 @@ cleanup() {
             rm -rf "$ORIGINAL_DIR/$PROJECT_NAME"
         fi
     fi
-    # FIX 1: Only exit 1 if original was non-zero (error), preserve 0 for user cancel
-    if [ "$ORIGINAL_EXIT_CODE" -ne 0 ]; then
+    # Only exit 1 if there was an error
+    if [ "$exit_code" -ne 0 ]; then
         exit 1
     fi
 }
 
-trap cleanup EXIT INT TERM
+trap 'cleanup $?' EXIT INT TERM
 
 # ============================================================================
 # Selectores interactivos
