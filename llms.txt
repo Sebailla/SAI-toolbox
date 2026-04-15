@@ -8,7 +8,11 @@
 
 ## Overview
 
-SAI Toolbox is a command-line tool that scaffolds production-ready Next.js projects with enterprise architecture patterns. It provides two architectural choices: Modular Vertical Slicing or Hexagonal (Clean) Architecture.
+SAI Toolbox is a command-line tool that scaffolds production-ready projects with multiple framework options and enterprise architecture patterns. It supports:
+
+- **Frontend**: Next.js or React + Vite
+- **Backend**: NestJS (TypeScript) or Gin/Go
+- **Monorepo**: Fullstack workspace with Next.js + API
 
 The project prioritizes **shell portability** (Bash 3.2+, macOS BSD, Linux GNU), **robust error handling**, and **developer experience** with automated git workflows and AI agent integration.
 
@@ -30,10 +34,21 @@ init-projects
 
 ```
   ▸ Step 1 ─── Project name (alphanumeric, must start with letter)
-  ▸ Step 2 ─── Architecture (Modular or Hexagonal)
-  ▸ Step 3 ─── AI Agent (OpenCode, Claude Code, Cursor, Gemini, All)
-  ▸ Step 4 ─── Graphify knowledge graph (optional)
-  ▸ Step 5 ─── Confirm
+  ▸ Step 2 ─── Package manager (bun/pnpm/npm)
+  ▸ Step 3 ─── Project type:
+      1) Frontend - Next.js
+      2) Frontend - React + Vite
+      3) Backend (NestJS or Gin/Go)
+      4) Monorepo Fullstack
+  ▸ [Step 4] ─── Backend type (if 3 or 4):
+      1) NestJS (TypeScript)
+      2) Gin/Go (standalone binary)
+  ▸ [Step 5] ─── Architecture (if 1, 2 or 4):
+      1) Modular Vertical Slicing
+      2) Hexagonal
+  ▸ Step 6 ─── AI Agent
+  ▸ Step 7 ─── Graphify (optional)
+  ▸ Step 8 ─── Confirm
 ```
 
 ### Requirements

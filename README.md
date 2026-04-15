@@ -1,8 +1,8 @@
 # 🚀 SAI Project Initializer
 
-**Script para crear proyectos Next.js production-ready con un solo comando.**
+**Script para crear proyectos production-ready con un solo comando.**
 
-Crea un proyecto completo con Next.js, TypeScript, Tailwind CSS v4, Prisma + PostgreSQL, y toda la configuración de desarrollo lista para usar.
+Crea proyectos completos de Frontend (Next.js, React+Vite), Backend (NestJS, Gin/Go) o Monorepo Fullstack, con arquitectura Modular o Hexagonal.
 
 ---
 
@@ -10,9 +10,10 @@ Crea un proyecto completo con Next.js, TypeScript, Tailwind CSS v4, Prisma + Pos
 
 | Feature | Descripción |
 |---------|-------------|
-| **Next.js 16** | App Router, TypeScript, Tailwind CSS v4 |
-| **Stack SAI** | Prisma + PostgreSQL, Zod, Vitest, Playwright, Husky |
+| **Multi-Proyecto** | Frontend (Next.js, React+Vite), Backend (NestJS, Gin/Go), Monorepo |
+| **Gestores** | bun, pnpm, npm |
 | **Arquitecturas** | Modular Vertical Slicing o Hexagonal (Clean Architecture) |
+| **Stack SAI** | Prisma + PostgreSQL, Zod, Vitest, Playwright, Husky |
 | **Git Workflow** | Ramas auto: main → develop → feat/fix/docs/chore |
 | **Versionado** | Semantic Versioning con standard-version y CHANGELOG |
 | **Git hooks** | Commitlint + Conventional Commits + branch naming + GGA |
@@ -51,10 +52,21 @@ El script es **completamente interactivo**. Solo ejecutá `init-projects` y te g
 
 ```
   ▸ Paso 1 ─── Nombre del proyecto
-  ▸ Paso 2 ─── Arquitectura (Modular o Hexagonal)  
-  ▸ Paso 3 ─── Agente de IA
-  ▸ Paso 4 ─── Graphify
-  ▸ Paso 5 ─── Confirmar
+  ▸ Paso 2 ─── Gestor de paquetes (bun/pnpm/npm)
+  ▸ Paso 3 ─── Tipo de proyecto:
+      1) Frontend - Next.js
+      2) Frontend - React + Vite
+      3) Backend (NestJS o Gin/Go)
+      4) Monorepo Fullstack
+  ▸ [Paso 4] ─── Backend (si elegiste 3 o 4):
+      1) NestJS
+      2) Gin/Go
+  ▸ [Paso 5] ─── Arquitectura (si elegiste 1, 2 o 4):
+      1) Modular Vertical Slicing
+      2) Hexagonal
+  ▸ Paso 6 ─── Agente de IA
+  ▸ Paso 7 ─── Graphify
+  ▸ Paso 8 ─── Confirmar
 ```
 
 ---
@@ -143,10 +155,11 @@ src/
 
 | Categoría | Tecnología |
 |-----------|------------|
-| **Framework** | Next.js 16 (App Router) |
+| **Frontend** | Next.js 16 (App Router) o React + Vite |
 | **Styling** | Tailwind CSS v4 |
+| **Backend** | NestJS o Gin/Go |
 | **Database** | Prisma + PostgreSQL |
-| **Validation** | Zod |
+| **Validation** | Zod / class-validator |
 | **Testing** | Vitest + Playwright |
 | **Auth** | JWT + bcryptjs |
 | **Git** | Husky + Commitlint + Standard Version |
