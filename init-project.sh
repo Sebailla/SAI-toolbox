@@ -7,23 +7,29 @@
 
 set -e
 
-# Colores
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-CYAN='\033[0;36m'
-MAGENTA='\033[0;35m'
-BOLD='\033[1m'
-NC='\033[0m'
+# Colores usando ANSI-C quoting para portabilidad
+RED=$'\033[0;31m'
+GREEN=$'\033[0;32m'
+YELLOW=$'\033[0;33m'
+CYAN=$'\033[0;36m'
+MAGENTA=$'\033[0;35m'
+BOLD=$'\033[1m'
+DIM=$'\033[2m'
+NC=$'\033[0m'
 
-log_info()    { echo -e "${CYAN}${BOLD}[INFO]${NC}   $*"; }
-log_success() { echo -e "${GREEN}${BOLD}[OK]${NC}     $*"; }
-log_warn()    { echo -e "${YELLOW}${BOLD}[WARN]${NC}  $*"; }
-log_error()   { echo -e "${RED}${BOLD}[ERROR]${NC}  $*" >&2; }
+# Helper para logs con color (printf '%b' interpreta \033 correctamente)
+log() {
+    printf '%b' "$1"
+}
+
+log_info()    { log "${CYAN}${BOLD}[INFO]${NC}   $*\\n"; }
+log_success() { log "${GREEN}${BOLD}[OK]${NC}     $*\\n"; }
+log_warn()    { log "${YELLOW}${BOLD}[WARN]${NC}  $*\\n"; }
+log_error()   { log "${RED}${BOLD}[ERROR]${NC}  $*\\n" >&2; }
 
 ORIGINAL_DIR=$(pwd)
 PROJECT_CREATED=0
-CLEANUPdone=0
+CLEANUP_DONE=0
 
 cleanup() {
     # Evitar ejecución múltiple del cleanup
@@ -34,7 +40,7 @@ cleanup() {
 
     if [ "$PROJECT_CREATED" -eq 1 ]; then
         # El proyecto se creó pero algo falló después
-        echo -e "${RED}${BOLD}[FATAL]${NC} El script no terminó correctamente. Deshaciendo..."
+        log "${RED}${BOLD}[FATAL]${NC} El script no terminó correctamente. Deshaciendo...\n"
         if [ -n "$PROJECT_NAME" ] && [ -d "$ORIGINAL_DIR/$PROJECT_NAME" ]; then
             log_warn "Borrando directorio a medio crear: $PROJECT_NAME"
             rm -rf "$ORIGINAL_DIR/$PROJECT_NAME"
@@ -51,18 +57,18 @@ trap cleanup EXIT INT TERM
 # ============================================================================
 
 print_banner() {
-    echo -e "${CYAN}${BOLD}"
+    log "${CYAN}${BOLD}"
     echo "  ╔═══════════════════════════════════════════════╗"
-    echo "  ║   SAI Project Initializer                   ║"
-    echo "  ║   Arquitectura Modular o Hexagonal           ║"
+    echo "  ║   SAI Project Initializer                     ║"
+    echo "  ║   Arquitectura Modular o Hexagonal            ║"
     echo "  ╚═══════════════════════════════════════════════╝"
-    echo -e "${NC}"
+    log "${NC}"
     echo ""
 }
 
 select_project_name() {
-    echo -e "${BOLD}1/5${NC} - Nombre del proyecto"
-    echo -e "${DIM}Ingresá el nombre del proyecto (ej: mi-app, api-rest)${NC}"
+    log "${BOLD}1/5${NC} - Nombre del proyecto\n"
+    log "${DIM}Ingresá el nombre del proyecto (ej: mi-app, api-rest)${NC}\n"
     echo ""
     read -r -p "Nombre: " PROJECT_NAME
 
@@ -89,14 +95,14 @@ select_project_name() {
 
 select_architecture() {
     echo ""
-    echo -e "${BOLD}2/5${NC} - Arquitectura"
-    echo -e "${DIM}Elegí el tipo de arquitectura para el proyecto${NC}"
+    log "${BOLD}2/5${NC} - Arquitectura\n"
+    log "${DIM}Elegí el tipo de arquitectura para el proyecto${NC}\n"
     echo ""
-    echo -e "  ${CYAN}1${NC}) Modular Vertical Slicing"
-    echo -e "      Estructura por features/módulos con components, services, actions"
+    log "  ${CYAN}1${NC}) Modular Vertical Slicing\n"
+    log "      Estructura por features/módulos con components, services, actions\n"
     echo ""
-    echo -e "  ${CYAN}2${NC}) Hexagonal (Clean Architecture)"
-    echo -e "      Domain → Application → Infrastructure (separación extrema)"
+    log "  ${CYAN}2${NC}) Hexagonal (Clean Architecture)\n"
+    log "      Domain → Application → Infrastructure (separación extrema)\n"
     echo ""
     read -r -p "Elegí [1-2]: " ARCH_CHOICE
 
@@ -110,14 +116,14 @@ select_architecture() {
 
 select_agent() {
     echo ""
-    echo -e "${BOLD}3/5${NC} - Agente de IA"
-    echo -e "${DIM}Elegí el agente de IA principal para este proyecto${NC}"
+    log "${BOLD}3/5${NC} - Agente de IA\n"
+    log "${DIM}Elegí el agente de IA principal para este proyecto${NC}\n"
     echo ""
-    echo -e "  ${CYAN}1${NC}) OpenCode"
-    echo -e "  ${CYAN}2${NC}) Claude Code"
-    echo -e "  ${CYAN}3${NC}) Cursor"
-    echo -e "  ${CYAN}4${NC}) Gemini CLI"
-    echo -e "  ${CYAN}5${NC}) Todos (inyecta reglas para todos)"
+    log "  ${CYAN}1${NC}) OpenCode\n"
+    log "  ${CYAN}2${NC}) Claude Code\n"
+    log "  ${CYAN}3${NC}) Cursor\n"
+    log "  ${CYAN}4${NC}) Gemini CLI\n"
+    log "  ${CYAN}5${NC}) Todos (inyecta reglas para todos)\n"
     echo ""
     read -r -p "Elegí [1-5]: " AGENT_CHOICE
 
@@ -134,11 +140,11 @@ select_agent() {
 
 select_graphify() {
     echo ""
-    echo -e "${BOLD}4/5${NC} - Graphify (Knowledge Graph)"
-    echo -e "${DIM}Graphify genera un grafo de conocimiento del proyecto${NC}"
+    log "${BOLD}4/5${NC} - Graphify (Knowledge Graph)\n"
+    log "${DIM}Graphify genera un grafo de conocimiento del proyecto${NC}\n"
     echo ""
-    echo -e "  ${CYAN}1${NC}) Sí - Habilitar Graphify"
-    echo -e "  ${CYAN}2${NC}) No - Omitir Graphify"
+    log "  ${CYAN}1${NC}) Sí - Habilitar Graphify\n"
+    log "  ${CYAN}2${NC}) No - Omitir Graphify\n"
     echo ""
     read -r -p "Elegí [1-2]: " GRAPHIFY_CHOICE
 
@@ -156,22 +162,22 @@ select_graphify() {
     # GGA se detecta automáticamente si está instalado
     if command -v gga &>/dev/null; then
         echo ""
-        echo -e "${BOLD}GGA:${NC}            Detectado y configurado automáticamente"
+        log "${BOLD}GGA:${NC}            Detectado y configurado automáticamente\n"
     fi
 }
 
 confirm_setup() {
     echo ""
-    echo -e "${BOLD}5/5${NC} - Confirmar configuración"
+    log "${BOLD}5/5${NC} - Confirmar configuración\n"
     echo ""
-    echo -e "  ${CYAN}Proyecto:${NC}      $PROJECT_NAME"
-    echo -e "  ${CYAN}Arquitectura:${NC}   $ARCHITECTURE"
-    echo -e "  ${CYAN}Agente:${NC}         $TARGET_AGENT"
-    echo -e "  ${CYAN}Graphify:${NC}       $USE_GRAPHIFY"
+    log "  ${CYAN}Proyecto:${NC}      $PROJECT_NAME\n"
+    log "  ${CYAN}Arquitectura:${NC}   $ARCHITECTURE\n"
+    log "  ${CYAN}Agente:${NC}         $TARGET_AGENT\n"
+    log "  ${CYAN}Graphify:${NC}       $USE_GRAPHIFY\n"
     if command -v gga &>/dev/null; then
-        echo -e "  ${CYAN}GGA:${NC}            Automático (detectado)"
+        log "  ${CYAN}GGA:${NC}            Automático (detectado)\n"
     else
-        echo -e "  ${CYAN}GGA:${NC}            No detectado (opcional)"
+        log "  ${CYAN}GGA:${NC}            No detectado (opcional)\n"
     fi
     echo ""
     read -r -p "Confirmar y crear proyecto? [s/n]: " CONFIRM
@@ -926,7 +932,7 @@ setup_gga() {
         log_warn "GGA no está instalado. Se recomienda instalar para code review automático."
         echo ""
         log_info "Para instalar GGA:"
-        echo -e "  ${CYAN}brew install gentleman-programming/tap/gga${NC}"
+        log "  ${CYAN}brew install gentleman-programming/tap/gga${NC}\n"
         echo ""
         return 0
     fi
