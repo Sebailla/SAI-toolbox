@@ -261,6 +261,29 @@ create_project() {
 }
 
 # ============================================================================
+# Environment Template
+# ============================================================================
+
+setup_env_template() {
+    log_info "Creando .env.template para PostgreSQL..."
+
+    cat > .env.template <<'EOF'
+# Database
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?schema=public"
+
+# Auth
+JWT_SECRET="your-super-secret-jwt-token-change-in-production"
+JWT_EXPIRES_IN="7d"
+
+# App
+APP_URL="http://localhost:3000"
+NODE_ENV="development"
+EOF
+
+    log_success ".env.template creado"
+}
+
+# ============================================================================
 # Estructura Modular
 # ============================================================================
 
@@ -997,6 +1020,7 @@ main() {
     fi
 
     setup_github_actions
+    setup_env_template
     setup_vscode
     setup_agents_md
     setup_agent_rules
