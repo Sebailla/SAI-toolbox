@@ -1570,23 +1570,34 @@ setup_husky() {
     fi
 
     # Usar el gestor de paquetes seleccionado
-    local pkg_exec_cmd=""
+    local install_cmd=""
+    local exec_cmd=""
     case "$SELECTED_PKG_MANAGER" in
-        bun)   pkg_exec_cmd="bun" ;;
-        pnpm)  pkg_exec_cmd="pnpm" ;;
-        npm)   pkg_exec_cmd="npm" ;;
-        *)     pkg_exec_cmd="bun" ;;
+        bun)   install_cmd="bun install" ;;
+        pnpm)  install_cmd="pnpm install" ;;
+        npm)   install_cmd="npm install" ;;
+        *)     install_cmd="bun install" ;;
     esac
 
-    $pkg_exec_cmd exec husky init
+    log_info "Instalando dependencias antes de Husky..."
+    $install_cmd || log_warn "Instalación de deps falló, continuando..."
 
-    cat > commitlint.config.mjs <<'EOF'
-export default { extends: ['@commitlint/config-conventional'] };
-EOF
+    log_info "Inicializando Husky..."
+    $install_cmd --frozen-lockfile 2>/dev/null || $install_cmd 2>/dev/null || true
 
-    cat > .husky/commit-msg <<'EOF'
+    local husky_cmd="$install_cmd"
+    case "$SELECTED_PKG_MANAGER" in
+        bun)   husky_cmd="bunx husky init" ;;
+        pnpm)  husky_cmd="pnpm exec husky init" ;;
+        npm)   husky_cmd="npm exec husky init" ;;
+        *)     husky_cmd="bunx husky init" ;;
+    esac
+
+    $husky_cmd 2>/dev/null || log_warn "Husky init falló, continuando..."
+
+    cat > .husky/commit-msg <<EOF
 #!/usr/bin/env bash
-bunx --no -- commitlint --edit "$1"
+${SELECTED_PKG_MANAGER} exec commitlint --edit "\$1"
 EOF
     chmod +x .husky/commit-msg
 
