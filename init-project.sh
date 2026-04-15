@@ -958,6 +958,39 @@ setup_scripts() {
 }
 
 # ============================================================================
+# Vitest Strict TDD Mode
+# ============================================================================
+
+setup_vitest() {
+    log_info "Configurando Vitest en Strict TDD Mode..."
+
+    cat > vitest.config.ts <<'EOF'
+import { defineConfig } from 'vitest/config'
+
+export default defineConfig({
+  test: {
+    dir: './src',
+    environment: 'node',
+    include: ['**/*.{test,spec}.{ts,tsx}'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+    },
+    mode: 'strict',
+    passWithNoTests: true,
+    watch: false,
+    typecheck: {
+      enabled: true,
+      tsconfig: './tsconfig.json',
+    },
+  },
+})
+EOF
+
+    log_success "vitest.config.ts creado con Strict TDD Mode"
+}
+
+# ============================================================================
 # Versionado Automático
 # ============================================================================
 
@@ -1415,6 +1448,7 @@ main() {
     setup_agent_rules
     setup_skills
     setup_scripts
+    setup_vitest
     setup_gitignore
     setup_git_initial
     setup_versioning
