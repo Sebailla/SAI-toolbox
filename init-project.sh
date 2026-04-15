@@ -606,6 +606,59 @@ Formato: `tipo/nombre-en-kebab-case`. Tipos válidos: `feat, fix, hotfix, chore,
 ## 🧠 Knowledge Graph (Graphify)
 - Si existe `graphify-out/`, leer `graphify-out/GRAPH_REPORT.md` antes de modificar arquitectura.
 
+## 🔄 SDD (Spec-Driven Development)
+
+**OBLIGATORIO para toda feature nueva:**
+
+1. **EXPLORE** - Investigar el codebase antes de proponer cambios
+   - Usar skill `sdd-explore` para entender el contexto
+   - Leer `graphify-out/GRAPH_REPORT.md` si existe
+
+2. **PROPOSE** - Crear propuesta formal
+   - Usar skill `sdd-propose`
+   - Definir: intent, scope, approach, affected areas
+
+3. **SPEC** - Escribir especificación formal
+   - Usar skill `sdd-spec`
+   - Incluir: requirements, scenarios, acceptance criteria
+
+4. **DESIGN** - Documentar diseño técnico
+   - Usar skill `sdd-design`
+   - Arquitectura, dependencias, tradeoffs
+
+5. **TASKS** - Dividir en tareas implementables
+   - Usar skill `sdd-tasks`
+   - Cada tarea = un commit atómico
+
+6. **APPLY** - Implementar siguiendo spec y design
+   - Usar skill `sdd-apply`
+
+7. **VERIFY** - Validar contra specs
+   - Usar skill `sdd-verify`
+
+8. **ARCHIVE** - Guardar specs y cleanup
+   - Usar skill `sdd-archive`
+
+**FLUJO COMPLETO:**
+```
+User Request → SDD Explore → SDD Propose → SDD Spec → SDD Design → SDD Tasks → IMPLEMENT → VERIFY → ARCHIVE
+```
+
+## 🚨 GGA (Gentleman Guardian Angel) - CORRECCIÓN OBLIGATORIA
+
+**NUNCA hagas commit si GGA reporta errores.**
+
+**PROTOCOLO:**
+1. `git commit` triggers `gga run`
+2. Si GGA reporta errores/warnings:
+   - DETENER el commit inmediatamente
+   - CORREGIR todos los errores reportados
+   - Volver a ejecutar `git commit` (se re-ejecuta GGA)
+   - Repetir hasta que GGA apruebe (STATUS: PASSED)
+3. SOLO cuando GGA dice PASSED, el commit se concreta
+
+**REGLA DE ORO:** GGA es tu mentor. Si te dice que está mal, está mal. Corregí.
+
 ## Calidad
 - Toda feature nueva debe tener tests unitarios.
 - Conventional Commits estrictos.
