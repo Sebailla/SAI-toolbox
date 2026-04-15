@@ -281,8 +281,9 @@ run_with_timeout() {
             $SIG{ALRM} = sub { exit 124 };
             alarm($secs);
             system(@ARGV);
+            my $cmd_exit = $?;  # Capture exit BEFORE alarm(0)
             alarm(0);
-            exit $?;
+            exit $cmd_exit;
         ' "${seconds}" "${cmd[@]}"
         return $?
     fi
