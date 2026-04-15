@@ -954,6 +954,73 @@ setup_scripts() {
 }
 
 # ============================================================================
+# Versionado Automático
+# ============================================================================
+
+setup_versioning() {
+    log_info "Configurando versionado semántico..."
+
+    # Crear CHANGELOG.md inicial
+    cat > CHANGELOG.md <<'EOF'
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.0.0] - YYYY-MM-DD
+
+### Added
+
+- Initial project setup with Next.js, TypeScript, and chosen architecture
+
+[1.0.0]: https://github.com/USER/PROJECT/releases/tag/v1.0.0
+EOF
+
+    # Reemplazar placeholder con datos reales
+    sed -i.bak "s/USER\/PROJECT/$(git config user.email 2>/dev/null | cut -d@ -f1 | tr '[:upper:]' '[:lower:]')/$(basename "$(pwd)")/g" CHANGELOG.md 2>/dev/null || true
+    sed -i "s/YYYY-MM-DD/$(date +%Y-%m-%d)/g" CHANGELOG.md 2>/dev/null || true
+    rm -f CHANGELOG.md.bak
+
+    # Crear VERSION file
+    echo "1.0.0" > VERSION
+
+    # Configurar standard-version
+    cat > .versionrc <<'EOF'
+{
+  "types": [
+    {"type": "feat", "section": "Features"},
+    {"type": "fix", "section": "Bug Fixes"},
+    {"type": "chore", "section": "Maintenance"},
+    {"type": "docs", "section": "Documentation"},
+    {"type": "refactor", "section": "Refactoring"},
+    {"type": "test", "section": "Tests"},
+    {"type": "perf", "section": "Performance"},
+    {"type": "ci", "section": "CI/CD"}
+  ],
+  "releaseCommitMessageFormat": "chore(release): {{currentTag}}",
+  "skip": {
+    "bumpFile": false,
+    "changelog": false
+  }
+}
+EOF
+
+    # Hacer commit del versionado inicial en main
+    git add CHANGELOG.md VERSION .versionrc
+    git commit -m "chore: initial version 1.0.0"
+
+    # Crear tag inicial
+    git tag -a v1.0.0 -m "Initial release v1.0.0" --no-sign
+
+    # Crear rama develop desde main
+    git checkout -b develop
+
+    log_success "Versionado configurado: v1.0.0"
+}
+
+# ============================================================================
 # Git ignore
 # ============================================================================
 
@@ -1166,13 +1233,8 @@ setup_git_initial() {
         log_info "Git name: $(git config --global user.name) (existente)"
     fi
 
+    # Stagear todo para el primer commit (versioning lo hara)
     git add .
-    git commit -m "chore: initial project setup" -q --no-verify
-
-    bunx standard-version --first-release -q --no-verify 2>/dev/null || true
-
-    log_info "Creando rama develop..."
-    git checkout -b develop -q
 }
 
 # ============================================================================
@@ -1280,6 +1342,7 @@ main() {
     setup_scripts
     setup_gitignore
     setup_git_initial
+    setup_versioning
     setup_git_workflow
     setup_graphify
     setup_gga
