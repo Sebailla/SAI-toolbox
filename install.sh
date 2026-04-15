@@ -46,6 +46,7 @@ SCRIPT_URL="https://raw.githubusercontent.com/Sebailla/SAI-toolbox/main/init-pro
 log "${CYAN}[1/3]${NC} Descargando init-projects...\n"
 if ! curl -fsSL --connect-timeout 30 --max-time 120 "$SCRIPT_URL" -o "$INSTALL_DIR/init-projects.tmp"; then
     log "${RED}Error: No se pudo descargar el script${NC}\n"
+    rm -f "$INSTALL_DIR/init-projects.tmp"
     exit 1
 fi
 

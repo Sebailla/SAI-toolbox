@@ -310,7 +310,10 @@ create_project() {
     PROJECT_CREATED=1
 
     log_info "Inicializando Git (rama main)..."
-    git init -q -b main
+    # Git 2.28+ soporta -b. Intentar directo y hacer fallback si falla.
+    if ! git init -q -b main 2>/dev/null; then
+        git init -q && git checkout -b main
+    fi
 
     log_info "Scaffold Next.js (TypeScript, Tailwind v4, App Router, src/)..."
     run_with_timeout 300 bunx create-next-app@latest . \
@@ -978,10 +981,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.0.0]: https://github.com/USER/PROJECT/releases/tag/v1.0.0
 EOF
 
-    # Reemplazar placeholder con datos reales
-    sed -i.bak "s/USER\/PROJECT/$(git config user.email 2>/dev/null | cut -d@ -f1 | tr '[:upper:]' '[:lower:]')/$(basename "$(pwd)")/g" CHANGELOG.md 2>/dev/null || true
-    sed -i "s/YYYY-MM-DD/$(date +%Y-%m-%d)/g" CHANGELOG.md 2>/dev/null || true
-    rm -f CHANGELOG.md.bak
+    # Reemplazar placeholder con datos reales (usar # como delimiter para evitar conflicto con /)
+    local github_user=$(git config user.email 2>/dev/null | cut -d@ -f1 | tr '[:upper:]' '[:lower:]')
+    local project_name=$(basename "$(pwd)")
+    local today=$(date +%Y-%m-%d)
+
+    # Detectar si es macOS (BSD sed) o Linux (GNU sed)
+    # Usamos OSTYPE que ya está definido y es confiable
+    if [[ "$OSTYPE" == darwin* ]]; then
+        # BSD sed (macOS) - necesita '' después de -i
+        sed -i '' "s#USER/PROJECT#${github_user}/${project_name}#g" CHANGELOG.md
+        sed -i '' "s#YYYY-MM-DD#${today}#g" CHANGELOG.md
+    else
+        # GNU sed (Linux)
+        sed -i "s#USER/PROJECT#${github_user}/${project_name}#g" CHANGELOG.md
+        sed -i "s#YYYY-MM-DD#${today}#g" CHANGELOG.md
+    fi
 
     # Crear VERSION file
     echo "1.0.0" > VERSION
@@ -1011,8 +1026,8 @@ EOF
     git add CHANGELOG.md VERSION .versionrc
     git commit -m "chore: initial version 1.0.0"
 
-    # Crear tag inicial
-    git tag -a v1.0.0 -m "Initial release v1.0.0" --no-sign
+    # Crear tag inicial (sin firma, usando -c para scope local)
+    git -c tag.gpgsign=false tag -a v1.0.0 -m "Initial release v1.0.0"
 
     # Crear rama develop desde main
     git checkout -b develop
@@ -1077,6 +1092,7 @@ GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 YELLOW='\033[0;33m'
 BOLD='\033[1m'
+DIM='\033[2m'
 NC='\033[0m'
 
 # Help
@@ -1154,14 +1170,18 @@ echo -e "  ${YELLOW}▸ Msg:${NC}     $COMMIT_MSG"
 echo ""
 
 # Verificar cambios ( unstaged + staged + untracked )
-if ! git diff --quiet && [[ -z "$(git ls-files --others --exclude-standard)" ]]; then
+# Sale si NO hay cambios unstaged Y NO hay cambios staged Y NO hay untracked
+if git diff --quiet && git diff --cached --quiet && [[ -z "$(git ls-files --others --exclude-standard)" ]]; then
     echo -e "  ${RED}✗${NC} No hay cambios para commitear"
     exit 1
 fi
 echo -e "  ${GREEN}✓${NC} Hay cambios para commitear"
 
 # Stagear todo
-git add -A
+if ! git add -A; then
+    echo -e "  ${RED}✗${NC} git add falló"
+    exit 1
+fi
 
 # Ejecutar tests (si existen)
 if [[ -f "package.json" ]] && grep -q '"test"' package.json; then
