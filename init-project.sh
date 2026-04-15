@@ -982,7 +982,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 EOF
 
     # Reemplazar placeholder con datos reales (usar # como delimiter para evitar conflicto con /)
-    local github_user=$(git config user.email 2>/dev/null | cut -d@ -f1 | tr '[:upper:]' '[:lower:]')
+    # Intentar detectar username de GitHub desde remote URL
+    local github_user="USER"
+    if git remote get-url origin &>/dev/null; then
+        local remote_url=$(git remote get-url origin 2>/dev/null)
+        # Extraer username de URLs como https://github.com/username/repo.git
+        if [[ "$remote_url" =~ github\.com[:/]([^/]+) ]]; then
+            github_user="${BASH_REMATCH[1]}"
+        fi
+    fi
+    if [[ "$github_user" == "USER" ]]; then
+        echo -e "  ${YELLOW}⚠${NC} No se pudo detectar tu username de GitHub."
+        echo "  El CHANGELOG usa ${CYAN}USER${NC} como placeholder."
+        echo "  Configurá tu Git username con: ${CYAN}git config --global github.user TU_USUARIO${NC}"
+    fi
+    
     local project_name=$(basename "$(pwd)")
     local today=$(date +%Y-%m-%d)
 
