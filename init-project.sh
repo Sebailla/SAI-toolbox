@@ -491,7 +491,7 @@ create_frontend_next() {
         --app \
         --src-dir \
         --import-alias "@/*" \
-        --use-$SELECTED_PKG_MANAGER \
+        --use-${SELECTED_PKG_MANAGER} \
         --skip-install \
         --yes || { log_error "create-next-app falló"; exit 1; }
 
@@ -943,7 +943,7 @@ create_backend_golang() {
     mkdir -p pkg/response
     mkdir -p configs
 
-    cat > cmd/server/main.go <<'EOF'
+    cat > cmd/server/main.go <<EOF
 package main
 
 import (
@@ -951,8 +951,8 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"<MODULE_NAME>/internal/handlers"
-	"<MODULE_NAME>/internal/middleware"
+	"${PROJECT_NAME}/internal/handlers"
+	"${PROJECT_NAME}/internal/middleware"
 )
 
 func main() {
@@ -979,69 +979,9 @@ func main() {
 }
 EOF
 
-    cat > internal/handlers/handler.go <<'EOF'
-package handlers
-
-import (
-	"net/http"
-
-	"github.com/gin-gonic/gin"
-)
-
-type Handler struct{}
-
-func NewHandler() *Handler {
-	return &Handler{}
-}
-
-func (h *Handler) Health(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"status": "ok",
-	})
-}
-EOF
-
-    cat > internal/middleware/cors.go <<'EOF'
-package middleware
-
-import (
-	"github.com/gin-gonic/gin"
-)
-
-func CORS() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-
-		c.Next()
-	}
-}
-EOF
-
-    cat > internal/models/models.go <<'EOF'
-package models
-
-type Example struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	CreatedAt string `json:"createdAt"`
-}
-EOF
-
-    cat > configs/.env.example <<'EOF'
-PORT=8080
-DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE?schema=public
-EOF
-
+    # Update go.mod with real module name
     cat > go.mod <<EOF
-module $PROJECT_NAME
+module ${PROJECT_NAME}
 
 go 1.21
 
@@ -1049,6 +989,8 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 )
 EOF
+
+    go mod tidy
 
     go get github.com/gin-gonic/gin@v1.9.1
 
@@ -1204,8 +1146,36 @@ EOF
 
 setup_github_actions() {
     log_info "Configurando GitHub Actions..."
+
+    # Determinar commands según gestor
+    local install_cmd=""
+    local run_cmd=""
+    local setup_action=""
+    case "$SELECTED_PKG_MANAGER" in
+        bun)
+            install_cmd="bun install --frozen-lockfile"
+            run_cmd="bun"
+            setup_action="oven-sh/setup-bun@v2"
+            ;;
+        pnpm)
+            install_cmd="pnpm install --frozen-lockfile"
+            run_cmd="pnpm"
+            setup_action="pnpm/action-setup@v2"
+            ;;
+        npm)
+            install_cmd="npm ci"
+            run_cmd="npm"
+            setup_action="actions/setup-node@v4"
+            ;;
+        *)
+            install_cmd="bun install --frozen-lockfile"
+            run_cmd="bun"
+            setup_action="oven-sh/setup-bun@v2"
+            ;;
+    esac
+
     mkdir -p .github/workflows
-    cat > .github/workflows/release.yml <<'EOF'
+    cat > .github/workflows/release.yml <<EOF
 name: Release on Main
 
 on:
@@ -1219,13 +1189,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses: ${setup_action}
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: ${install_cmd}
       - name: Build
-        run: bun run build
+        run: ${run_cmd} run build
       - name: Test
-        run: bun test --run
+        run: ${run_cmd} test --run
 
   release:
     name: "Release"
@@ -1237,15 +1207,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: oven-sh/setup-bun@v2
+          token: \${{ secrets.GITHUB_TOKEN }}
+      - uses: ${setup_action}
       - name: Install deps
-        run: bun install
+        run: ${install_cmd}
       - name: Create Release
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          bun run release
+          ${run_cmd} run release
           git push --follow-tags origin main
 EOF
 }
@@ -1638,18 +1608,39 @@ EOF
     chmod +x .husky/pre-push
 
     # GGA SIEMPRE en pre-commit si está instalado
+    local test_cmd=""
+    local pkg_exec_cmd=""
+    case "$SELECTED_PKG_MANAGER" in
+        bun)
+            test_cmd="bun test --run --passWithNoTests"
+            pkg_exec_cmd="bun"
+            ;;
+        pnpm)
+            test_cmd="pnpm test --run --passWithNoTests"
+            pkg_exec_cmd="pnpm"
+            ;;
+        npm)
+            test_cmd="npm test --run --passWithNoTests"
+            pkg_exec_cmd="npm"
+            ;;
+        *)
+            test_cmd="bun test --run --passWithNoTests"
+            pkg_exec_cmd="bun"
+            ;;
+    esac
+
     if command -v gga &>/dev/null; then
-        cat > .husky/pre-commit <<'EOF'
+        cat > .husky/pre-commit <<EOF
 #!/usr/bin/env bash
-bun test --run --passWithNoTests
-bunx lint-staged
+${test_cmd}
+${pkg_exec_cmd} exec lint-staged
 gga run || exit 1
 EOF
     else
-        cat > .husky/pre-commit <<'EOF'
+        cat > .husky/pre-commit <<EOF
 #!/usr/bin/env bash
-bun test --run --passWithNoTests
-bunx lint-staged
+${test_cmd}
+${pkg_exec_cmd} exec lint-staged
 EOF
     fi
     chmod +x .husky/pre-commit
@@ -2027,7 +2018,14 @@ fi
 if [[ -f "package.json" ]] && grep -q '"test"' package.json; then
     echo ""
     printf '%b\n' "  ${CYAN}▸ Corriendo tests...${NC}"
-    if ! bun test --run 2>/dev/null; then
+    # Detectar package manager del proyecto
+    local test_cmd="bun"
+    if [[ -f "pnpm-lock.yaml" ]]; then
+        test_cmd="pnpm"
+    elif [[ -f "package-lock.json" ]] && ! [[ -f "bun.lockb" ]]; then
+        test_cmd="npm"
+    fi
+    if ! ${test_cmd} test --run 2>/dev/null; then
         printf '%b\n' "  ${RED}✗${NC} Tests fallaron. Corregí antes de commitear."
         exit 1
     fi
@@ -2233,6 +2231,12 @@ main() {
                 create_hexagonal_structure
             else
                 create_modular_structure
+            fi
+            # Aplicar arquitectura también a apps/web
+            if [ "$ARCHITECTURE" = "hexagonal" ]; then
+                (cd apps/web && create_hexagonal_structure)
+            else
+                (cd apps/web && create_modular_structure)
             fi
             ;;
     esac
