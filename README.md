@@ -13,7 +13,7 @@ Crea proyectos completos de Frontend (Next.js, React+Vite), Backend (NestJS, Gin
 | **Multi-Proyecto** | Frontend (Next.js, React+Vite), Backend (NestJS, Gin/Go), Monorepo |
 | **Gestores** | bun, pnpm, npm |
 | **Arquitecturas** | Modular Vertical Slicing o Hexagonal (Clean Architecture) |
-| **Stack SAI** | Prisma + PostgreSQL, Zod, Vitest, Playwright, Husky, Docker DB |
+| **Stack SAI** | Prisma + PostgreSQL, Zod, Vitest, Playwright, Husky |
 | **Docker DB** | PostgreSQL y/o MongoDB con persistencia (opcional) |
 | **Git Workflow** | Ramas auto: main → develop → feat/fix/docs/chore |
 | **Versionado** | Semantic Versioning con standard-version y CHANGELOG |
@@ -24,6 +24,7 @@ Crea proyectos completos de Frontend (Next.js, React+Vite), Backend (NestJS, Gin
 | **UI Colorida** | Interfaz interactiva con colores y ayuda visual |
 | **Portable** | Compatible con macOS (BSD) y Linux (GNU) |
 | **Shell Timeout** | Timeout portable con fallback a perl (macOS sin gtimeout) |
+| **Modular** | Código organizado en módulos funcionales (lib/) |
 
 ---
 
@@ -67,8 +68,67 @@ El script es **completamente interactivo**. Solo ejecutá `init-projects` y te g
       2) Hexagonal
   ▸ Paso 6 ─── Agente de IA
   ▸ Paso 7 ─── Graphify
-  ▸ Paso 8 ─── Confirmar
+  ▸ Paso 8 ─── Docker Database (PostgreSQL/MongoDB/both/none)
+  ▸ Paso 9 ─── Confirmar y crear proyecto
 ```
+
+---
+
+## 🐳 Docker Database (Opcional)
+
+El CLI puede generar contenedores Docker con bases de datos para desarrollo local:
+
+```
+  ▸ 1) PostgreSQL (SQL - ideal para Prisma)
+  ▸ 2) MongoDB (NoSQL)
+  ▸ 3) Ambas (PostgreSQL + MongoDB)
+  ▸ 4) No incluir Docker
+```
+
+### Scripts generados
+
+| Script | Descripción |
+|--------|-------------|
+| `docker-compose.yml` | Servicios con volúmenes persistentes |
+| `scripts/db-start.sh` | Inicia contenedores y muestra connection strings |
+| `scripts/db-stop.sh` | Detiene contenedores (preserva datos) |
+| `scripts/db-reset.sh` | Resetear base de datos (BORRA datos) |
+| `scripts/db-logs.sh` | Ver logs de los contenedores |
+
+### Persistencia
+
+Los datos persisten en volúmenes Docker:
+- `postgres_data` → datos PostgreSQL
+- `mongodb_data` + `mongodb_config` → datos MongoDB
+
+### Connection strings
+
+```bash
+# PostgreSQL
+postgresql://saiuser:saipass@localhost:5432/saidb
+
+# MongoDB
+mongodb://saiuser:saipass@localhost:27017/sai
+```
+
+---
+
+## 📦 Arquitectura Modular
+
+El código está organizado en módulos funcionales para facilitar mantenimiento y extensibilidad:
+
+```
+init-project/
+├── init-project.sh          # Entry point (~140 líneas)
+└── lib/
+    ├── core.sh              # Colores, logging, cleanup, banner
+    ├── validators.sh        # check_dependencies, check_docker
+    ├── selectors.sh         # Funciones de selección interactiva
+    ├── builders.sh          # Creación de proyectos (Next.js, Vite, NestJS, Go, Monorepo)
+    └── setup.sh             # Configuración post-creación
+```
+
+**Total: 44 funciones** organizadas por responsabilidad.
 
 ---
 
@@ -191,6 +251,8 @@ proyecto/
 
 ## 🔧 Post-Instalación
 
+### Sin Docker Database
+
 ```bash
 cd mi-proyecto
 
@@ -200,6 +262,27 @@ bun install
 # 2. Configurar variables de entorno
 cp .env.template .env
 # Editar DATABASE_URL con tu PostgreSQL
+
+# 3. Generar cliente Prisma
+bunx prisma generate
+
+# 4. Crear base de datos y tablas
+bunx prisma migrate dev --name init
+
+# 5. Iniciar desarrollo
+bun dev
+```
+
+### Con Docker Database
+
+```bash
+cd mi-proyecto
+
+# 1. Instalar dependencias
+bun install
+
+# 2. Iniciar contenedores Docker
+./scripts/db-start.sh
 
 # 3. Generar cliente Prisma
 bunx prisma generate
@@ -331,4 +414,4 @@ MIT
 
 **Autor:** Sebastián Illa  
 **Creado:** 2026-04-13  
-**Última modificación:** 2026-04-15
+**Última modificación:** 2026-04-16

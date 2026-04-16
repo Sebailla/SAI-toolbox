@@ -2,7 +2,7 @@
 
 **Author:** Sebastián Illa  
 **Created:** 2026-04-13  
-**Last Updated:** 2026-04-15
+**Last Updated:** 2026-04-16
 
 ---
 
@@ -13,8 +13,42 @@ SAI Toolbox is a command-line tool that scaffolds production-ready projects with
 - **Frontend**: Next.js or React + Vite
 - **Backend**: NestJS (TypeScript) or Gin/Go
 - **Monorepo**: Fullstack workspace with Next.js + API
+- **Docker Database**: PostgreSQL and/or MongoDB with Docker (optional)
 
-The project prioritizes **shell portability** (Bash 3.2+, macOS BSD, Linux GNU), **robust error handling**, and **developer experience** with automated git workflows and AI agent integration.
+The project prioritizes **shell portability** (Bash 3.2+, macOS BSD, Linux GNU), **robust error handling**, **modular code organization**, and **developer experience** with automated git workflows and AI agent integration.
+
+---
+
+## Architecture - Modular CLI
+
+The init-project CLI is organized into functional modules for maintainability:
+
+```
+init-project/
+├── init-project.sh          # Entry point (~140 lines)
+└── lib/
+    ├── core.sh              # Colors, logging, cleanup, banner (8 functions)
+    ├── validators.sh        # check_dependencies, check_docker (2 functions)
+    ├── selectors.sh         # Interactive selection functions (9 functions)
+    ├── builders.sh          # Project creation (5 functions)
+    └── setup.sh             # Post-creation setup (20 functions)
+```
+
+**Total: 44 functions** organized by responsibility.
+
+### Module Dependencies
+
+```
+core.sh (no deps)
+    ↓
+validators.sh (needs core)
+    ↓
+selectors.sh (needs core + validators)
+    ↓
+builders.sh (needs core + validators)
+    ↓
+setup.sh (needs core only)
+```
 
 ---
 
@@ -30,10 +64,10 @@ curl -fsSL https://raw.githubusercontent.com/Sebailla/SAI-toolbox/main/install.s
 init-projects
 ```
 
-### Interactive Steps
+### Interactive Steps (9 steps)
 
 ```
-  ▸ Step 1 ─── Project name (alphanumeric, must start with letter)
+  ▸ Step 1 ─── Project name (alphanumeric, must start with lowercase letter)
   ▸ Step 2 ─── Package manager (bun/pnpm/npm)
   ▸ Step 3 ─── Project type:
       1) Frontend - Next.js
@@ -48,15 +82,50 @@ init-projects
       2) Hexagonal
   ▸ Step 6 ─── AI Agent
   ▸ Step 7 ─── Graphify (optional)
-  ▸ Step 8 ─── Confirm
+  ▸ Step 8 ─── Docker Database (PostgreSQL/MongoDB/both/none)
+  ▸ Step 9 ─── Confirm and create project
 ```
 
-### Requirements
+---
 
-- `bun` (installs dependencies, runs scripts)
-- `git` (version control)
-- `npm` (for `bun pkg set` commands)
-- `perl` (optional, for timeout fallback on macOS without gtimeout)
+## Docker Database (Optional)
+
+The CLI can generate Docker containers with databases for local development:
+
+### Options
+
+```
+  ▸ 1) PostgreSQL (SQL - ideal for Prisma)
+  ▸ 2) MongoDB (NoSQL)
+  ▸ 3) Both (PostgreSQL + MongoDB)
+  ▸ 4) No Docker
+```
+
+### Generated Files
+
+| File | Description |
+|------|-------------|
+| `docker-compose.yml` | Services with persistent volumes |
+| `scripts/db-start.sh` | Start containers, show connection strings |
+| `scripts/db-stop.sh` | Stop containers (preserves data) |
+| `scripts/db-reset.sh` | Reset database (⚠️ DELETES data) |
+| `scripts/db-logs.sh` | View container logs |
+
+### Persistence
+
+Data persists in Docker volumes:
+- `postgres_data` → PostgreSQL data
+- `mongodb_data` + `mongodb_config` → MongoDB data
+
+### Connection Strings
+
+```bash
+# PostgreSQL
+postgresql://saiuser:saipass@localhost:5432/saidb
+
+# MongoDB
+mongodb://saiuser:saipass@localhost:27017/sai
+```
 
 ---
 
@@ -78,7 +147,7 @@ feat/xxx, fix/xxx, chore/xxx, docs/xxx (temporary feature branches)
 
 ### Automated Commit Script (git-c)
 
-The `git-c` script automates the commit workflow with robust error handling:
+The `git-c` script automates the commit workflow:
 
 ```bash
 # From develop, create automated commit
@@ -87,84 +156,59 @@ git c "add user authentication feature"
 
 **What it does:**
 
-1. **Verifies** you're on `develop` branch and it exists
-2. **Detects** change type (feat/fix/docs/chore/test) using `case` statements (no regex injection)
-3. **Generates** branch name with slugify:
-   - Supports accented characters (áéíóúñü)
-   - Truncates to 50 characters max
-   - Strips leading/trailing hyphens
-   - Falls back to "unnamed" if empty
-4. **Verifies** branch doesn't already exist
-5. **Runs** `bun test --run --passWithNoTests`
-6. **Runs** GGA code review (if installed)
-7. **Creates** branch and commit **atomically**
-8. **Cleans up** orphaned branch if commit fails
-
-**Safety Features:**
-
-- Uses `printf` instead of `echo -e` (POSIX compliant)
-- Git alias uses absolute path from repo root: `!bash "$(git rev-parse --show-toplevel)/git-c"`
-- If commit fails after branch creation, branch is automatically deleted
+1. Verifies you're on `develop` branch
+2. Detects change type (feat/fix/docs/chore/test)
+3. Generates branch name with slugify (supports accented chars, 50 char max)
+4. Verifies branch doesn't exist
+5. Runs tests: `bun test --run --passWithNoTests`
+6. Runs GGA code review (if installed)
+7. Creates branch and commit atomically
+8. Cleans up orphaned branch if commit fails
 
 ---
 
-## Architecture Options
+## Architecture Options (Generated Projects)
 
 ### Modular Vertical Slicing
 
-Organizes code by features/modules. Each module is self-contained with its own components, services, actions, and types.
+Organizes code by features/modules:
 
 ```
 src/modules/<name>/
 ├── components/     # UI components (no business logic)
-├── services/        # Pure business logic (no React hooks)
-├── actions.ts       # Server Actions with Zod validation
-├── types.ts         # Module-specific types
+├── services/       # Pure business logic (no React hooks)
+├── actions.ts      # Server Actions with Zod validation
+├── types.ts        # Module-specific types
 └── index.ts        # Public API
 
-src/core/            # Shared utilities, hooks, lib
-src/components/ui/   # Generic UI components (Button, Dialog, etc.)
+src/core/           # Shared utilities, hooks, lib
+src/components/ui/   # Generic UI components
 ```
-
-**Rules:**
-
-- Services cannot use React hooks or import components
-- Components must delegate business logic to services
-- Actions always use `'use server'` with Zod validation
-- Shared logic goes to `src/core/`
-- Generic UI goes to `src/components/ui/`
 
 ### Hexagonal (Clean Architecture)
 
-Strict separation between Domain, Application, and Infrastructure layers.
+Strict separation between Domain, Application, and Infrastructure:
 
 ```
 src/
-├── domain/           # Pure business logic (NO external dependencies)
+├── domain/         # Pure business logic (NO external dependencies)
 │   ├── entities/
 │   ├── value-objects/
 │   ├── services/
 │   ├── events/
 │   ├── exceptions/
-│   └── interfaces/   # Contracts (output ports)
-├── application/      # Use cases
+│   └── interfaces/ # Contracts (output ports)
+├── application/    # Use cases
 │   ├── use-cases/
 │   ├── dto/
 │   └── ports/
-├── infrastructure/   # External adapters
+├── infrastructure/ # External adapters
 │   ├── persistence/  # Prisma repositories
-│   ├── http/        # Controllers, middleware
+│   ├── http/         # Controllers, middleware
 │   ├── queue/
 │   └── external/
-└── shared/          # Utilities
+└── shared/        # Utilities
 ```
-
-**Rules (STRICT - VIOLATIONS CAUSE BUILD FAILURE):**
-
-- Domain cannot import from Application or Infrastructure
-- Application cannot import from Infrastructure
-- All Infrastructure must implement Domain/Application interfaces
-- No framework imports in Domain files (no Prisma, no Express)
 
 ---
 
@@ -172,10 +216,10 @@ src/
 
 | Category | Technology |
 |----------|-----------|
-| Framework | Next.js 16 (App Router) |
+| Framework | Next.js 16 (App Router) or React + Vite |
 | Language | TypeScript |
 | Styling | Tailwind CSS v4 |
-| Database | Prisma + PostgreSQL |
+| Database | Prisma + PostgreSQL (or Docker PostgreSQL/MongoDB) |
 | Validation | Zod |
 | Testing | Vitest + Playwright |
 | Git Hooks | Husky + Commitlint |
@@ -189,19 +233,62 @@ src/
 
 ```
 proyecto/
-├── .env.template          # Environment variables template
+├── .env.template           # Environment variables template
 ├── .env                    # (NOT committed - local config)
-├── prisma/schema.prisma    # Database schema
-├── CHANGELOG.md           # Changelog (Keep a Changelog format)
-├── VERSION                 # Current version (1.0.0)
+├── prisma/schema.prisma     # Database schema
+├── docker-compose.yml       # Docker DB services (if selected)
+├── scripts/
+│   ├── db-start.sh         # Start Docker containers
+│   ├── db-stop.sh          # Stop Docker containers
+│   ├── db-reset.sh         # Reset database
+│   └── db-logs.sh          # View logs
+├── CHANGELOG.md            # Changelog
+├── VERSION                 # Current version
 ├── .versionrc            # standard-version config
-├── .husky/               # Git hooks (commit-msg, pre-commit, pre-push)
-├── .github/workflows/    # CI/CD (health-gate + release)
+├── .husky/               # Git hooks
+├── .github/workflows/    # CI/CD
 ├── .vscode/settings.json  # VSCode config
-├── git-c                  # Automated commit script (executable)
-├── AGENTS.md              # AI agent rules (all agents)
-├── CLAUDE.md / .cursorrules / GEMINI.md  # Per-agent rules
-└── .agent/skills/        # Custom AI skills (not committed)
+├── git-c                  # Automated commit script
+├── AGENTS.md              # AI agent rules
+└── .agent/skills/        # Custom AI skills
+```
+
+---
+
+## Post-Installation
+
+### Without Docker Database
+
+```bash
+cd project-name
+bun install
+cp .env.template .env
+bunx prisma generate
+bunx prisma migrate dev --name init
+bun dev
+```
+
+### With Docker Database
+
+```bash
+cd project-name
+bun install
+./scripts/db-start.sh
+bunx prisma generate
+bunx prisma migrate dev --name init
+bun dev
+```
+
+---
+
+## Environment Variables
+
+```env
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?schema=public"
+JWT_SECRET="your-super-secret-jwt-token-change-in-production"
+JWT_EXPIRES_IN="7d"
+APP_URL="http://localhost:3000"
+NODE_ENV="development"
 ```
 
 ---
@@ -209,8 +296,7 @@ proyecto/
 ## Semantic Versioning
 
 ```bash
-# Create release (bumps version, updates CHANGELOG, creates tag)
-bun run release
+bun run release  # bumps version, updates CHANGELOG, creates tag
 
 # Version bump detection:
 # feat: → Minor (1.0.0 → 1.1.0)
@@ -230,103 +316,13 @@ Types: feat, fix, chore, docs, refactor, test, perf, ci
 
 ---
 
-## Important Project Rules
-
-1. **Communication:** Spanish (Rioplatense) with "fundamentación" - always explain WHY and HOW
-2. **Architecture:** STRICT adherence to chosen pattern - decline violations
-3. **Git Workflow:** Always work from develop, use `git c` for commits
-4. **SDD:** Spec-Driven Development workflow mandatory for all features
-5. **GGA:** Code review runs automatically on every commit if installed
-6. **Commits:** Conventional Commits strict format
-7. **Tests:** All features must have unit tests
-
----
-
 ## Shell Portability
-
-The init script is designed for maximum compatibility:
 
 - **Bash 3.2+** compatible
 - **macOS (BSD)**: Uses `sed -i ''` (BSD syntax)
 - **Linux (GNU)**: Uses `sed -i''` (GNU syntax)
 - **Timeout**: Tries `timeout` → `gtimeout` → `perl alarm()` fallback
 - **Colors**: ANSI-C quoting `$'\033['` works on all shells
-
----
-
-## Post-Installation
-
-```bash
-cd project-name
-
-# 1. Install dependencies
-bun install
-
-# 2. Configure environment
-cp .env.template .env
-# Edit .env with your PostgreSQL connection
-
-# 3. Generate Prisma client
-bunx prisma generate
-
-# 4. Create database tables
-bunx prisma migrate dev --name init
-
-# 5. Start development
-bun dev
-```
-
----
-
-## Environment Variables (.env.template)
-
-```env
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?schema=public"
-JWT_SECRET="your-super-secret-jwt-token-change-in-production"
-JWT_EXPIRES_IN="7d"
-APP_URL="http://localhost:3000"
-NODE_ENV="development"
-```
-
----
-
-## Available Commands
-
-### Development
-```bash
-bun dev              # Development server
-bun build            # Production build
-bun start            # Production server
-```
-
-### Testing
-```bash
-bun test             # Unit tests (Vitest)
-bun test --run       # Run tests once
-bun test:e2e         # E2E tests (Playwright)
-bun test:watch       # Watch mode
-```
-
-### Database
-```bash
-bun db:generate      # Generate Prisma client
-bun db:migrate       # Run migrations
-bun db:push          # Push to DB (development)
-bun db:seed          # Seed data
-bun db:studio        # Prisma UI
-bun db:reset         # Reset database (⚠️ deletes data)
-```
-
-### Git
-```bash
-git c "message"      # Automated commit from develop
-git c --help         # Show git-c help
-```
-
-### Releases
-```bash
-bun run release      # Create release (semver bump + CHANGELOG + tag)
-```
 
 ---
 
@@ -337,23 +333,22 @@ bun run release      # Create release (semver bump + CHANGELOG + tag)
 | `.docs/Arquitectura-Modular.md` | Modular Vertical Slicing guide |
 | `.docs/Arquitectura-Hexagonal.md` | Hexagonal Architecture guide |
 | `.docs/Guia-Rapida.md` | Quick start guide |
-| `.docs/Git-Workflow.md` | Git workflow detailed documentation |
+| `.docs/Git-Workflow.md` | Git workflow documentation |
 | `.agent/AGENTS.md` | AI agent configuration and rules |
 | `README.md` | Project overview |
 | `llms.txt` | This file (optimized for LLM context) |
 
 ---
 
-## AI Agent Integration
+## Important Project Rules
 
-The project includes `.agent/AGENTS.md` with:
-
-- **Communication rules**: Spanish (Rioplatense), always explain WHY and HOW
-- **Architecture rules**: Strict adherence to chosen pattern
-- **SDD workflow**: Spec-Driven Development mandatory
-- **GGA integration**: Code review on every commit
-
-When working with an AI agent in this project, it should read `.agent/AGENTS.md` first.
+1. **Communication:** Spanish (Rioplatense) with "fundamentación" - always explain WHY and HOW
+2. **Architecture:** STRICT adherence to chosen pattern - decline violations
+3. **Git Workflow:** Always work from develop, use `git c` for commits
+4. **SDD:** Spec-Driven Development workflow mandatory for all features
+5. **GGA:** Code review runs automatically on every commit if installed
+6. **Commits:** Conventional Commits strict format
+7. **Tests:** All features must have unit tests
 
 ---
 
