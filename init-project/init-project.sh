@@ -17,9 +17,20 @@ else
     SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 fi
 
+# Resolve module directory - modules are in init-project/lib/ relative to this script
+# For downloaded version (script at root): modules in ./init-project/lib/
+# For development (script in project root): modules in ./init-project/lib/
+SCRIPT_DIR="$(cd "$SCRIPT_DIR" && pwd)"
+MODULE_DIR="$SCRIPT_DIR/init-project/lib"
+
 # Source all modules in dependency order
 # Each module provides a specific set of functions
-for lib in "$SCRIPT_DIR"/lib/*.sh; do
+if [ ! -d "$MODULE_DIR" ]; then
+    echo "Error: Module directory not found: $MODULE_DIR" >&2
+    exit 1
+fi
+
+for lib in "$MODULE_DIR"/*.sh; do
     if [ -f "$lib" ]; then
         source "$lib"
     fi
