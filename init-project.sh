@@ -1070,6 +1070,27 @@ EOF
 }
 
 # ============================================================================
+# Environment Template
+# ============================================================================
+
+setup_env_template() {
+    log_info "Creando template de variables de entorno..."
+    cat > .env.example <<'EOF'
+# Database
+DATABASE_URL="postgresql://user:password@localhost:5432/dbname?schema=public"
+
+# Auth
+JWT_SECRET="your-secret-key-here"
+JWT_EXPIRES_IN="7d"
+
+# App
+NODE_ENV="development"
+PORT="3000"
+EOF
+    log_success "Template .env.example creado"
+}
+
+# ============================================================================
 # VSCode settings
 # ============================================================================
 
