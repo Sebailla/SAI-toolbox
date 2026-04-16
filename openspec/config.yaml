@@ -1,0 +1,31 @@
+# openspec/config.yaml
+schema: spec-driven
+
+context: |
+  Tech stack: Shell/Bash CLI (bash 3.2+ scripts)
+  Architecture: Project scaffolding tool (Modular/Hexagonal patterns for generated projects)
+  Testing: Shell scripts - bash -n syntax validation
+  Style: POSIX-compliant bash, ANSI colors, portable sed/timeout
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Identify affected scripts/modules
+  specs:
+    - Use Given/When/Then format for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+  tasks:
+    - Group tasks by phase (infrastructure, implementation, testing)
+    - Use hierarchical numbering (1.1, 1.2, etc.)
+    - Keep tasks small enough to complete in one session
+  apply:
+    - Follow existing code patterns and conventions
+    - Use bash -n to validate syntax before commits
+  verify:
+    - Run bash -n on modified scripts
+    - Compare implementation against every spec scenario
+  archive:
+    - Warn before merging destructive deltas (large removals)
