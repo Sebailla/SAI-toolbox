@@ -2224,15 +2224,9 @@ main() {
     case "$PROJECT_TYPE" in
         frontend-next)
             create_frontend_next
-            if [ "$ARCHITECTURE" = "hexagonal" ]; then
-                create_hexagonal_structure
-            else
-                create_hexagonal_structure
-            fi
             ;;
         frontend-vite)
             create_frontend_vite
-            create_hexagonal_structure
             ;;
         backend)
             if [ "$BACKEND_TYPE" = "nestjs" ]; then
@@ -2243,17 +2237,6 @@ main() {
             ;;
         monorepo)
             create_monorepo
-            if [ "$ARCHITECTURE" = "hexagonal" ]; then
-                create_hexagonal_structure
-            else
-                create_hexagonal_structure
-            fi
-            # Aplicar arquitectura también a apps/web
-            if [ "$ARCHITECTURE" = "hexagonal" ]; then
-                (cd apps/web && create_hexagonal_structure)
-            else
-                (cd apps/web && create_hexagonal_structure)
-            fi
             ;;
     esac
 
