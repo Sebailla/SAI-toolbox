@@ -21,6 +21,11 @@ log() {
     printf '%b' "$1"
 }
 
+log_info()    { log "${CYAN}${BOLD}[INFO]${NC}   $*\n"; }
+log_success() { log "${GREEN}${BOLD}[OK]${NC}     $*\n"; }
+log_warn()    { log "${YELLOW}${BOLD}[WARN]${NC}  $*\n"; }
+log_error()   { log "${RED}${BOLD}[ERROR]${NC}  $*\n" >&2; }
+
 log "\n${CYAN}${BOLD}"
 echo "  ╔═══════════════════════════════════════╗"
 echo "  ║   SAI Toolbox Installer               ║"
@@ -30,55 +35,85 @@ log "${NC}\n"
 # Detectar SO
 if [[ "$OSTYPE" == "darwin"* ]]; then
     INSTALL_DIR="$HOME/.local/bin"
+    EXTRACT_CMD="tar -xzf"
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
     INSTALL_DIR="$HOME/.local/bin"
+    EXTRACT_CMD="tar -xzf"
 else
-    log "${RED}Error: Sistema operativo no soportado${NC}\n"
+    log_error "Sistema operativo no soportado\n"
     exit 1
 fi
 
 # Crear directorio si no existe
 mkdir -p "$INSTALL_DIR"
 
-# URL del script (rama configurable via SAI_BRANCH env var)
-SCRIPT_URL="https://raw.githubusercontent.com/Sebailla/SAI-toolbox/${SAI_BRANCH:-main}/init-project.sh"
+# URL del tarball (rama configurable via SAI_BRANCH env var)
+SAI_BRANCH="${SAI_BRANCH:-main}"
+TARBALL_URL="https://github.com/Sebailla/SAI-toolbox/archive/refs/heads/${SAI_BRANCH}.tar.gz"
 
-log "${CYAN}[1/3]${NC} Descargando init-projects...\n"
-if ! curl -fsSL --connect-timeout 30 --max-time 120 "$SCRIPT_URL" -o "$INSTALL_DIR/init-projects.tmp"; then
-    log "${RED}Error: No se pudo descargar el script${NC}\n"
-    rm -f "$INSTALL_DIR/init-projects.tmp"
+log "${CYAN}[1/4]${NC} Descargando SAI Toolbox...\n"
+if ! curl -fsSL --connect-timeout 30 --max-time 120 "$TARBALL_URL" -o "$INSTALL_DIR/sai-toolbox.tar.gz"; then
+    log_error "No se pudo descargar el tarball\n"
+    rm -f "$INSTALL_DIR/sai-toolbox.tar.gz"
     exit 1
 fi
 
-# Verificar que el archivo no esté vacío y sea un script de bash válido
-if [ ! -s "$INSTALL_DIR/init-projects.tmp" ]; then
-    log "${RED}Error: El archivo descargado está vacío${NC}\n"
-    rm -f "$INSTALL_DIR/init-projects.tmp"
+# Verificar que el archivo no esté vacío
+if [ ! -s "$INSTALL_DIR/sai-toolbox.tar.gz" ]; then
+    log_error "El archivo descargado está vacío\n"
+    rm -f "$INSTALL_DIR/sai-toolbox.tar.gz"
     exit 1
 fi
 
-if ! head -1 "$INSTALL_DIR/init-projects.tmp" | grep -q "^#!/"; then
-    log "${RED}Error: El archivo descargado no parece ser un script válido${NC}\n"
-    rm -f "$INSTALL_DIR/init-projects.tmp"
+log "${CYAN}[2/4]${NC} Extrayendo archivos...\n"
+cd "$INSTALL_DIR"
+
+# Extraer y obtener el nombre del directorio generado
+EXTRACTED_DIR=$(tar -tzf "$INSTALL_DIR/sai-toolbox.tar.gz" | head -1 | cut -f1 -d"/")
+
+# Limpiar instalación anterior si existe
+if [ -d "$INSTALL_DIR/$EXTRACTED_DIR" ]; then
+    rm -rf "$INSTALL_DIR/$EXTRACTED_DIR"
+fi
+
+# Extraer
+if ! $EXTRACT_CMD "$INSTALL_DIR/sai-toolbox.tar.gz"; then
+    log_error "Error al extraer el tarball\n"
+    rm -f "$INSTALL_DIR/sai-toolbox.tar.gz"
     exit 1
 fi
 
-# Mover a destino final (verificar que no exista para evitar sobreescritura accidental)
+# Limpiar tarball
+rm -f "$INSTALL_DIR/sai-toolbox.tar.gz"
+
+# Verificar que existe init-project
+if [ ! -d "$INSTALL_DIR/$EXTRACTED_DIR/init-project" ]; then
+    log_error "Estructura de archivos inesperada en el tarball\n"
+    rm -rf "$INSTALL_DIR/$EXTRACTED_DIR"
+    exit 1
+fi
+
+# Crear symlink o copiar init-projects al directorio de instalación
+log "${CYAN}[3/4]${NC} Instalando init-projects...\n"
+
+# Remover versión anterior si existe
 if [ -f "$INSTALL_DIR/init-projects" ]; then
-    log_warn "Ya existe una instalación previa en $INSTALL_DIR/init-projects"
-    read -r -t 10 -p "   └─►  ¿Sobrescribir? [s/N]: " OVERWRITE
-    if [[ ! "$OVERWRITE" =~ ^[Ss]$ ]]; then
-        log_info "Instalación cancelada."
-        rm -f "$INSTALL_DIR/init-projects.tmp"
-        exit 0
-    fi
+    rm -f "$INSTALL_DIR/init-projects"
 fi
-mv "$INSTALL_DIR/init-projects.tmp" "$INSTALL_DIR/init-projects"
 
-log "${CYAN}[2/3]${NC} Haciendo ejecutable...\n"
+# Copiar solo lo necesario (init-project.sh y el directorio lib/)
+# en lugar de todo el repo
+cp "$INSTALL_DIR/$EXTRACTED_DIR/init-project/init-project.sh" "$INSTALL_DIR/init-projects"
+mkdir -p "$INSTALL_DIR/init-project"
+cp -r "$INSTALL_DIR/$EXTRACTED_DIR/init-project/lib" "$INSTALL_DIR/init-project/"
+
+# Hacer ejecutable
 chmod +x "$INSTALL_DIR/init-projects"
 
-log "${CYAN}[3/3]${NC} Configurando PATH...\n"
+# Limpiar directorio temporal
+rm -rf "$INSTALL_DIR/$EXTRACTED_DIR"
+
+log_success "init-projects instalado en $INSTALL_DIR/init-projects"
 
 # Detectar shell activo usando múltiples métodos para mayor precisión
 detect_shell() {

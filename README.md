@@ -43,8 +43,11 @@ init-projects
 ### Uso directo (sin instalación)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Sebailla/SAI-toolbox/main/init-project.sh | bash
+# Descarga y ejecuta el script modular
+curl -fsSL https://raw.githubusercontent.com/Sebailla/SAI-toolbox/main/install.sh | bash
 ```
+
+> **Nota:** La instalación descarga el tarball completo del repositorio para asegurar que todos los módulos (`lib/*.sh`) estén disponibles.
 
 ---
 
