@@ -109,8 +109,8 @@ select_project_name() {
             continue
         fi
 
-        # Convertir a minúsculas por seguridad (npm naming restrictions)
-        PROJECT_NAME="${PROJECT_NAME,,}"
+        # Convertir a minúsculas por seguridad (npm naming restrictions) - POSIX way
+        PROJECT_NAME=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]')
 
         # Verificar que no exista el directorio
         if [ -d "$PROJECT_NAME" ]; then
