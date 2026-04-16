@@ -30,6 +30,12 @@ BACKEND_TYPE=""
 # Arquitectura (si aplica): modular | hexagonal
 ARCHITECTURE=""
 
+# Docker Database: postgres | mongodb | both | none
+DOCKER_DB_TYPE="none"
+
+# Flag para saber si Docker está disponible
+DOCKER_AVAILABLE=0
+
 # Helper para logs con color (printf '%b' interpreta \033 correctamente)
 log() {
     printf '%b' "$1"
@@ -96,7 +102,7 @@ select_project_name() {
     while true; do
         echo ""
         log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        log "${BOLD}${CYAN}  ▸ Paso 1 de 6 ─── Nombre del proyecto${NC}"
+        log "${BOLD}${CYAN}  ▸ Paso 1 de 9 ─── Nombre del proyecto${NC}"
         log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo ""
         log "${DIM}Ingresá el nombre para tu proyecto (sin espacios)${NC}"
@@ -135,7 +141,7 @@ select_project_name() {
 select_package_manager() {
     echo ""
     log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    log "${BOLD}${CYAN}  ▸ Paso 2 de 6 ─── Gestor de paquetes${NC}"
+    log "${BOLD}${CYAN}  ▸ Paso 2 de 9 ─── Gestor de paquetes${NC}"
     log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     log "${DIM}Elegí el gestor de paquetes para tu proyecto${NC}"
@@ -164,7 +170,7 @@ select_package_manager() {
 select_project_type() {
     echo ""
     log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    log "${BOLD}${CYAN}  ▸ Paso 3 de 8 ─── Tipo de proyecto${NC}"
+    log "${BOLD}${CYAN}  ▸ Paso 3 de 9 ─── Tipo de proyecto${NC}"
     log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     log "${DIM}Elegí el tipo de proyecto a crear${NC}"
@@ -197,7 +203,7 @@ select_project_type() {
 select_backend_type() {
     echo ""
     log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    log "${BOLD}${CYAN}  ▸ Paso 4 de 8 ─── Backend${NC}"
+    log "${BOLD}${CYAN}  ▸ Paso 4 de 9 ─── Backend${NC}"
     log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     log "${DIM}Elegí el framework para el backend${NC}"
@@ -279,7 +285,7 @@ select_agent() {
 select_graphify() {
     echo ""
     log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    log "${BOLD}${CYAN}  ▸ Paso 7 de 8 ─── Graphify (Knowledge Graph)${NC}"
+    log "${BOLD}${CYAN}  ▸ Paso 7 de 9 ─── Graphify (Knowledge Graph)${NC}"
     log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     log "${DIM}Graphify genera un grafo de conocimiento del proyecto${NC}"
@@ -308,10 +314,75 @@ select_graphify() {
     fi
 }
 
+select_docker_db() {
+    echo ""
+    log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    log "${BOLD}${CYAN}  ▸ Paso 8 de 9 ─── Docker Database (opcional)${NC}"
+    log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    log "${DIM}Contenedores Docker con PostgreSQL y/o MongoDB con persistencia${NC}"
+    echo ""
+    
+    # Verificar Docker primero
+    check_docker
+    
+    if [ "$DOCKER_AVAILABLE" -eq 0 ]; then
+        log_warn "Docker no disponible. Mostrando solo opción 'No incluir'."
+        echo ""
+        log "${WHITE}  ▸${NC}  ${BOLD}1${NC}) ${RED}No incluir Docker${NC}"
+        echo ""
+        log "${DIM}    (Docker no está instalado o el daemon no está corriendo)${NC}"
+        echo ""
+        read -r -t 120 -p "   └─►  " DB_CHOICE
+        echo ""
+        DOCKER_DB_TYPE="none"
+        log "${DIM}  ○${NC} Docker Database: omitido${NC}"
+        return
+    fi
+    
+    log "${WHITE}  ▸${NC}  ${BOLD}1${NC}) ${GREEN}PostgreSQL${NC} (SQL - ideal para Prisma)"
+    log "${DIM}        Relational DB, PostgreSQL 16-alpine${NC}"
+    echo ""
+    log "${WHITE}  ▸${NC}  ${BOLD}2${NC}) ${CYAN}MongoDB${NC} (NoSQL)"
+    log "${DIM}        Document DB, MongoDB 7.0${NC}"
+    echo ""
+    log "${WHITE}  ▸${NC}  ${BOLD}3${NC}) ${MAGENTA}Ambas${NC} (PostgreSQL + MongoDB)"
+    log "${DIM}        Ambientes SQL + NoSQL${NC}"
+    echo ""
+    log "${WHITE}  ▸${NC}  ${BOLD}4${NC}) ${RED}No incluir Docker${NC}"
+    log "${DIM}        Usar base de datos externa${NC}"
+    echo ""
+    read -r -t 120 -p "   └─►  " DB_CHOICE
+    echo ""
+
+    case "$DB_CHOICE" in
+        1) DOCKER_DB_TYPE="postgres" ;;
+        2) DOCKER_DB_TYPE="mongodb" ;;
+        3) DOCKER_DB_TYPE="both" ;;
+        4) DOCKER_DB_TYPE="none" ;;
+        *) DOCKER_DB_TYPE="none" ;;
+    esac
+    
+    case "$DOCKER_DB_TYPE" in
+        postgres)
+            log "${GREEN}  ✓${NC} Docker Database: ${GREEN}PostgreSQL${NC}"
+            ;;
+        mongodb)
+            log "${GREEN}  ✓${NC} Docker Database: ${CYAN}MongoDB${NC}"
+            ;;
+        both)
+            log "${GREEN}  ✓${NC} Docker Database: ${MAGENTA}PostgreSQL + MongoDB${NC}"
+            ;;
+        none)
+            log "${DIM}  ○${NC} Docker Database: omitido${NC}"
+            ;;
+    esac
+}
+
 confirm_setup() {
     echo ""
     log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    log "${BOLD}${CYAN}  ▸ Paso 8 de 8 ─── Confirmar${NC}"
+    log "${BOLD}${CYAN}  ▸ Paso 9 de 9 ─── Confirmar${NC}"
     log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     log "${DIM}Resumen de tu proyecto:${NC}"
@@ -327,6 +398,22 @@ confirm_setup() {
     log "${WHITE}  ▸${NC}  ${BOLD}Paquetes:${NC}     ${CYAN}$SELECTED_PKG_MANAGER${NC}"
     log "${WHITE}  ▸${NC}  ${BOLD}Agente:${NC}        ${MAGENTA}$TARGET_AGENT${NC}"
     log "${WHITE}  ▸${NC}  ${BOLD}Graphify:${NC}      ${WHITE}$USE_GRAPHIFY${NC}"
+    
+    case "$DOCKER_DB_TYPE" in
+        postgres)
+            log "${WHITE}  ▸${NC}  ${BOLD}Docker DB:${NC}     ${GREEN}PostgreSQL${NC}"
+            ;;
+        mongodb)
+            log "${WHITE}  ▸${NC}  ${BOLD}Docker DB:${NC}     ${CYAN}MongoDB${NC}"
+            ;;
+        both)
+            log "${WHITE}  ▸${NC}  ${BOLD}Docker DB:${NC}     ${MAGENTA}PostgreSQL + MongoDB${NC}"
+            ;;
+        none)
+            log "${WHITE}  ▸${NC}  ${BOLD}Docker DB:${NC}     ${DIM}Omitido${NC}"
+            ;;
+    esac
+    
     if command -v gga &>/dev/null; then
         log "${WHITE}  ▸${NC}  ${BOLD}GGA:${NC}         ${GREEN}Automático${NC}"
     fi
@@ -389,6 +476,30 @@ check_dependencies() {
         log_error "Instalalas antes de continuar."
         exit 1
     fi
+}
+
+# ============================================================================
+# Verificar Docker
+# ============================================================================
+
+check_docker() {
+    log_info "Verificando Docker..."
+    
+    if ! command -v docker &>/dev/null; then
+        log_warn "Docker no está instalado. La opción de Docker DB no estará disponible."
+        DOCKER_AVAILABLE=0
+        return
+    fi
+    
+    # Verificar que Docker daemon esté corriendo (docker info falla si no)
+    if ! docker info &>/dev/null; then
+        log_warn "Docker daemon no está corriendo. iniciá Docker Desktop."
+        DOCKER_AVAILABLE=0
+        return
+    fi
+    
+    DOCKER_AVAILABLE=1
+    log_success "Docker disponible"
 }
 
 # ============================================================================
@@ -2249,6 +2360,366 @@ EOF
 }
 
 # ============================================================================
+# Docker Database Setup
+# ============================================================================
+
+setup_docker_db() {
+    # Solo si el usuario eligió Docker DB
+    if [ "$DOCKER_DB_TYPE" = "none" ]; then
+        return 0
+    fi
+    
+    log_info "Configurando Docker Database: $DOCKER_DB_TYPE..."
+    
+    # Verificar Docker nuevamente por las dudas
+    if ! command -v docker &>/dev/null || ! docker info &>/dev/null; then
+        log_warn "Docker no está disponible. Omitiendo configuración de contenedores."
+        return 0
+    fi
+    
+    # Crear docker-compose.yml
+    cat > docker-compose.yml <<'EOF'
+# ============================================================
+# Docker Database Services
+# Persistencia de datos en volumenes Docker
+# ============================================================
+
+services:
+EOF
+
+    local db_user="saiuser"
+    local db_pass="saipass"
+    local db_name="saidb"
+    
+    # PostgreSQL
+    if [ "$DOCKER_DB_TYPE" = "postgres" ] || [ "$DOCKER_DB_TYPE" = "both" ]; then
+        cat >> docker-compose.yml <<'EOF'
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: sai_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: saidb
+      POSTGRES_USER: saiuser
+      POSTGRES_PASSWORD: saipass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U saiuser -d saidb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+EOF
+        log_success "PostgreSQL configurado en puerto 5432"
+    fi
+    
+    # MongoDB
+    if [ "$DOCKER_DB_TYPE" = "mongodb" ] || [ "$DOCKER_DB_TYPE" = "both" ]; then
+        cat >> docker-compose.yml <<'EOF'
+
+  mongodb:
+    image: mongo:7.0
+    container_name: sai_mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: sai
+      MONGO_INITDB_ROOT_USERNAME: saiuser
+      MONGO_INITDB_ROOT_PASSWORD: saipass
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+EOF
+        log_success "MongoDB configurado en puerto 27017"
+    fi
+    
+    # Volumes al final del archivo
+    cat >> docker-compose.yml <<'EOF'
+
+volumes:
+  postgres_data:
+    driver: local
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+EOF
+
+    # Crear scripts de ayuda
+    mkdir -p scripts
+    
+    # Script para iniciar contenedores
+    cat > scripts/db-start.sh <<'EOF'
+#!/usr/bin/env bash
+# ============================================================
+# Start Docker Database Containers
+# ============================================================
+
+set -e
+
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+echo ""
+printf '%b\n' "${CYAN}${BOLD}╔═══════════════════════════════════════╗${NC}"
+printf '%b\n' "${CYAN}${BOLD}║   Starting Docker Database...         ║${NC}"
+printf '%b\n' "${CYAN}${BOLD}╚═══════════════════════════════════════╝${NC}"
+echo ""
+
+# Verificar Docker
+if ! command -v docker &>/dev/null; then
+    printf '%b\n' "${RED}✗${NC} Docker no está instalado."
+    exit 1
+fi
+
+if ! docker info &>/dev/null; then
+    printf '%b\n' "${RED}✗${NC} Docker daemon no está corriendo."
+    printf '%s\n' "  Iniciá Docker Desktop."
+    exit 1
+fi
+
+# Verificar que existe docker-compose.yml
+if [ ! -f "docker-compose.yml" ]; then
+    printf '%b\n' "${RED}✗${NC} docker-compose.yml no encontrado."
+    exit 1
+fi
+
+# Iniciar contenedores
+printf '%b\n' "${CYAN}▸ Levantando contenedores...${NC}"
+docker compose up -d
+
+echo ""
+printf '%b\n' "${GREEN}✓${NC} Contenedores iniciados"
+echo ""
+
+# Mostrar estado
+printf '%b\n' "${CYAN}▸ Estado de los servicios:${NC}"
+docker compose ps
+
+echo ""
+printf '%b\n' "${YELLOW}▸ Connection strings:${NC}"
+echo ""
+
+# PostgreSQL connection string
+if docker compose ps postgres &>/dev/null; then
+    printf '%b\n' "  ${GREEN}PostgreSQL:${NC}"
+    printf '%s\n' "    postgresql://saiuser:saipass@localhost:5432/saidb"
+    echo ""
+fi
+
+# MongoDB connection string
+if docker compose ps mongodb &>/dev/null; then
+    printf '%b\n' "  ${CYAN}MongoDB:${NC}"
+    printf '%s\n' "    mongodb://saiuser:saipass@localhost:27017/sai"
+    echo ""
+fi
+
+echo ""
+printf '%b\n' "${GREEN}✓${NC} Ready! Los datos persisten en volumenes Docker."
+printf '%s\n' "  ${YELLOW}./scripts/db-stop.sh${NC} para detener."
+EOF
+    chmod +x scripts/db-start.sh
+
+    # Script para detener contenedores
+    cat > scripts/db-stop.sh <<'EOF'
+#!/usr/bin/env bash
+# ============================================================
+# Stop Docker Database Containers
+# ============================================================
+
+set -e
+
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+echo ""
+printf '%b\n' "${CYAN}╔═══════════════════════════════════════╗${NC}"
+printf '%b\n' "${CYAN}║   Stopping Docker Database...         ║${NC}"
+printf '%b\n' "${CYAN}╚═══════════════════════════════════════╝${NC}"
+echo ""
+
+if [ ! -f "docker-compose.yml" ]; then
+    printf '%b\n' "${RED}✗${NC} docker-compose.yml no encontrado."
+    exit 1
+fi
+
+printf '%b\n' "${CYAN}▸ Deteniendo contenedores...${NC}"
+docker compose down
+
+printf '%b\n' "${GREEN}✓${NC} Contenedores detenidos."
+printf '%s\n' "  Los datos persisten en volumenes Docker."
+printf '%s\n' "  Usá ${CYAN}./scripts/db-reset.sh${NC} si necesitás resetear."
+echo ""
+EOF
+    chmod +x scripts/db-stop.sh
+
+    # Script para resetear base de datos
+    cat > scripts/db-reset.sh <<'EOF'
+#!/usr/bin/env bash
+# ============================================================
+# Reset Docker Database (BORRA todos los datos)
+# ============================================================
+
+set -e
+
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+echo ""
+printf '%b\n' "${CYAN}${BOLD}╔═══════════════════════════════════════╗${NC}"
+printf '%b\n' "${CYAN}${BOLD}║   RESET Docker Database               ║${NC}"
+printf '%b\n' "${CYAN}${BOLD}╚═══════════════════════════════════════╝${NC}"
+echo ""
+
+printf '%b\n' "${YELLOW}⚠${NC} ${BOLD}ATENCIÓN: Esto BORRARÁ todos los datos${NC}"
+printf '%s\n' "  Los volumenes Docker serán eliminados."
+echo ""
+
+read -r -p "   └─►  Continuar? [${RED}s${NC}/${GREEN}n${NC}]: " CONFIRM
+echo ""
+
+if [[ ! "$CONFIRM" =~ ^[Ss]$ ]] && [[ ! "$CONFIRM" =~ ^[Ss][Ii]$ ]]; then
+    printf '%b\n' "${CYAN}Operación cancelada.${NC}"
+    exit 0
+fi
+
+if [ ! -f "docker-compose.yml" ]; then
+    printf '%b\n' "${RED}✗${NC} docker-compose.yml no encontrado."
+    exit 1
+fi
+
+printf '%b\n' "${CYAN}▸ Deteniendo y eliminando volumenes...${NC}"
+docker compose down -v
+
+printf '%b\n' "${GREEN}✓${NC} Volumenes eliminados."
+printf '%b\n' "${CYAN}▸ Reiniciando contenedores...${NC}"
+docker compose up -d
+
+printf '%b\n' "${GREEN}✓${NC} Base de datos reseteada."
+echo ""
+EOF
+    chmod +x scripts/db-reset.sh
+
+    # Script para ver logs
+    cat > scripts/db-logs.sh <<'EOF'
+#!/usr/bin/env bash
+# ============================================================
+# Ver logs de Docker Database
+# ============================================================
+
+set -e
+
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+echo ""
+printf '%b\n' "${CYAN}╔═══════════════════════════════════════╗${NC}"
+printf '%b\n' "${CYAN}║   Docker Database Logs                ║${NC}"
+printf '%b\n' "${CYAN}╚═══════════════════════════════════════╝${NC}"
+echo ""
+
+if [ ! -f "docker-compose.yml" ]; then
+    echo "docker-compose.yml no encontrado."
+    exit 1
+fi
+
+# Filtrar argumentos
+SERVICE=""
+if [ -n "$1" ]; then
+    SERVICE="$1"
+fi
+
+if [ -n "$SERVICE" ]; then
+    echo ""
+    printf '%b\n' "${CYAN}▸ Logs de ${SERVICE}:${NC}"
+    docker compose logs -f "$SERVICE"
+else
+    echo ""
+    printf '%b\n' "${CYAN}▸ Todos los logs (Ctrl+C para salir):${NC}"
+    docker compose logs -f
+fi
+EOF
+    chmod +x scripts/db-logs.sh
+
+    # Actualizar .env.template con las URLs correctas según la elección
+    if [ "$DOCKER_DB_TYPE" = "postgres" ]; then
+        cat >> .env <<'EOF'
+
+# ============================================================
+# Docker PostgreSQL
+# ============================================================
+# PostgreSQL: postgresql://saiuser:saipass@localhost:5432/saidb
+EOF
+    elif [ "$DOCKER_DB_TYPE" = "mongodb" ]; then
+        cat >> .env <<'EOF'
+
+# ============================================================
+# Docker MongoDB
+# ============================================================
+# MongoDB: mongodb://saiuser:saipass@localhost:27017/sai
+EOF
+    elif [ "$DOCKER_DB_TYPE" = "both" ]; then
+        cat >> .env <<'EOF'
+
+# ============================================================
+# Docker Databases
+# ============================================================
+# PostgreSQL: postgresql://saiuser:saipass@localhost:5432/saidb
+# MongoDB: mongodb://saiuser:saipass@localhost:27017/sai
+EOF
+    fi
+
+    # Actualizar .env.example
+    if grep -q "docker-compose.yml" .env.example 2>/dev/null; then
+        true  # ya existe
+    else
+        cat >> .env.example <<'EOF'
+
+# ============================================================
+# Docker Database (opcional)
+# ============================================================
+# Levantá con: docker compose up -d
+# Detené con: docker compose down
+# Resetear: ./scripts/db-reset.sh
+EOF
+    fi
+
+    log_success "Docker Database configurado"
+    echo ""
+    log "  ${CYAN}Scripts disponibles:${NC}"
+    log "    ${YELLOW}./scripts/db-start.sh${NC}  - Iniciar contenedores"
+    log "    ${YELLOW}./scripts/db-stop.sh${NC}   - Detener contenedores"
+    log "    ${YELLOW}./scripts/db-reset.sh${NC}  - Resetear base de datos"
+    log "    ${YELLOW}./scripts/db-logs.sh${NC}   - Ver logs"
+    echo ""
+    log "  ${CYAN}Volumenes persistentes:${NC}"
+    [ "$DOCKER_DB_TYPE" = "postgres" ] || [ "$DOCKER_DB_TYPE" = "both" ] && log "    ${GREEN}postgres_data${NC} - Datos de PostgreSQL"
+    [ "$DOCKER_DB_TYPE" = "mongodb" ] || [ "$DOCKER_DB_TYPE" = "both" ] && log "    ${CYAN}mongodb_data${NC} - Datos de MongoDB"
+    echo ""
+}
+
+# ============================================================================
 # Main
 # ============================================================================
 
@@ -2271,6 +2742,8 @@ main() {
 
     select_agent
     select_graphify
+    check_docker
+    select_docker_db
     confirm_setup
 
     echo ""
@@ -2317,6 +2790,7 @@ main() {
     setup_husky
     setup_graphify
     setup_gga
+    setup_docker_db
 
     echo ""
     log_success "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -2327,6 +2801,9 @@ main() {
     fi
     if [ "$PROJECT_TYPE" = "frontend-next" ] || [ "$PROJECT_TYPE" = "frontend-vite" ] || [ "$PROJECT_TYPE" = "monorepo" ]; then
         log_success "  Arquitectura: $ARCHITECTURE"
+    fi
+    if [ "$DOCKER_DB_TYPE" != "none" ]; then
+        log_success "  Docker DB: $DOCKER_DB_TYPE"
     fi
     log_success "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""

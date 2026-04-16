@@ -13,7 +13,8 @@ Crea proyectos completos de Frontend (Next.js, React+Vite), Backend (NestJS, Gin
 | **Multi-Proyecto** | Frontend (Next.js, React+Vite), Backend (NestJS, Gin/Go), Monorepo |
 | **Gestores** | bun, pnpm, npm |
 | **Arquitecturas** | Modular Vertical Slicing o Hexagonal (Clean Architecture) |
-| **Stack SAI** | Prisma + PostgreSQL, Zod, Vitest, Playwright, Husky |
+| **Stack SAI** | Prisma + PostgreSQL, Zod, Vitest, Playwright, Husky, Docker DB |
+| **Docker DB** | PostgreSQL y/o MongoDB con persistencia (opcional) |
 | **Git Workflow** | Ramas auto: main → develop → feat/fix/docs/chore |
 | **Versionado** | Semantic Versioning con standard-version y CHANGELOG |
 | **Git hooks** | Commitlint + Conventional Commits + branch naming + GGA |
