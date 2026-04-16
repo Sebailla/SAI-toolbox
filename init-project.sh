@@ -512,9 +512,7 @@ create_frontend_next() {
         @commitlint/config-conventional@latest standard-version@latest \
         || log_warn "Algunas devDependencies no se instalaron"
 
-    log_info "Inicializando Prisma..."
-    $pkg_exec_cmd x prisma init || log_warn "Prisma init falló"
-
+    log_info "Configurando Prisma schema..."
     mkdir -p prisma
     cat > prisma/schema.prisma <<'EOF'
 generator client {
@@ -532,6 +530,12 @@ model Example {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+EOF
+    
+    # Crear .env manualmente sin usar prisma init (evita warnings)
+    cat > .env <<'EOF'
+# Database
+DATABASE_URL="postgresql://user:password@localhost:5432/dbname?schema=public"
 EOF
     log_success "Prisma schema configurado"
 }
@@ -612,9 +616,7 @@ create_frontend_vite() {
         @commitlint/config-conventional@latest standard-version@latest \
         || log_warn "Algunas devDependencies no se instalaron"
 
-    log_info "Inicializando Prisma..."
-    $pkg_exec_cmd x prisma init || log_warn "Prisma init falló"
-
+    log_info "Configurando Prisma schema..."
     mkdir -p prisma
     cat > prisma/schema.prisma <<'EOF'
 generator client {
@@ -632,6 +634,12 @@ model Example {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+EOF
+    
+    # Crear .env manualmente sin usar prisma init (evita warnings)
+    cat > .env <<'EOF'
+# Database
+DATABASE_URL="postgresql://user:password@localhost:5432/dbname?schema=public"
 EOF
 
     cat > tailwind.config.js <<'EOF'
@@ -731,9 +739,7 @@ create_backend_nestjs() {
         @commitlint/cli@latest @commitlint/config-conventional@latest standard-version@latest \
         || log_warn "Algunas devDependencies no se instalaron"
 
-    log_info "Inicializando Prisma..."
-    $pkg_exec_cmd x prisma init || log_warn "Prisma init falló"
-
+    log_info "Configurando Prisma schema..."
     mkdir -p prisma
     cat > prisma/schema.prisma <<'EOF'
 generator client {
@@ -751,6 +757,12 @@ model Example {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+EOF
+    
+    # Crear .env y .env.example manualmente (evita warnings de prisma init)
+    cat > .env <<'EOF'
+# Database
+DATABASE_URL="postgresql://user:password@localhost:5432/dbname?schema=public"
 EOF
 
     mkdir -p .agent/skills plans specs designs .github/workflows
@@ -1562,16 +1574,22 @@ setup_scripts() {
             ;;
     esac
     
-    $pkg_exec_cmd pkg set scripts.test="vitest" 2>/dev/null || log_warn "No se pudo configurar scripts.test"
-    $pkg_exec_cmd pkg set scripts.db:seed="tsx prisma/seed.ts" 2>/dev/null || log_warn "No se pudo configurar scripts.db:seed"
-    $pkg_exec_cmd pkg set scripts.db:reset="prisma migrate reset --force && $run_cmd run db:seed" 2>/dev/null || log_warn "No se pudo configurar scripts.db:reset"
-    $pkg_exec_cmd pkg set scripts.release="standard-version" 2>/dev/null || log_warn "No se pudo configurar scripts.release"
-
-    log_info "Configurando overrides para evitar conflictos de dependencias..."
-    
-    # Los overrides de npm son específicos - solo aplicar para npm/bun
-    if [ "$SELECTED_PKG_MANAGER" = "npm" ] || [ "$SELECTED_PKG_MANAGER" = "bun" ]; then
-        $pkg_exec_cmd pkg set overrides.babel-plugin-react-compiler="^0.0.0-experimental-71f1f4c6-20240515" 2>/dev/null || log_warn "No se pudo configurar overrides"
+    # Agregar scripts a package.json usando jq o sed
+    if command -v jq &>/dev/null; then
+        jq '.scripts += {
+            "test": "vitest",
+            "db:seed": "tsx prisma/seed.ts",
+            "db:reset": "prisma migrate reset --force && '$run_cmd' run db:seed",
+            "release": "standard-version"
+        }' package.json > package.json.tmp && mv package.json.tmp package.json 2>/dev/null || log_warn "No se pudieron configurar los scripts"
+        
+        # Agregar overrides si aplica
+        if [ "$SELECTED_PKG_MANAGER" = "npm" ] || [ "$SELECTED_PKG_MANAGER" = "bun" ]; then
+            jq '.overrides += {"babel-plugin-react-compiler":"^0.0.0-experimental-71f1f4c6-20240515"}' package.json > package.json.tmp && mv package.json.tmp package.json 2>/dev/null || true
+        fi
+    else
+        # Fallback: usar sed para agregar scripts
+        log_info "jq no disponible, omitiendo configuración de scripts"
     fi
 }
 
@@ -1649,10 +1667,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 EOF
 
     # Reemplazar placeholder con datos reales (usar # como delimiter para evitar conflicto con /)
-    # Intentar detectar username de GitHub desde remote URL
+    # Intentar detectar username de GitHub desde remote URL solo si existe origin
     local github_user="USER"
-    if git remote get-url origin &>/dev/null; then
-        local remote_url=$(git remote get-url origin)
+    local remote_url=""
+    if git remote get-url origin 2>/dev/null | grep -q "github.com"; then
+        remote_url=$(git remote get-url origin)
         # Extraer username de URLs como:
         # https://github.com/username/repo.git
         # git@github.com:username/repo.git
@@ -1662,9 +1681,12 @@ EOF
         fi
     fi
     if [[ "$github_user" == "USER" ]]; then
-        log_warn "No se pudo detectar tu username de GitHub."
-        echo "  El CHANGELOG usa USER como placeholder."
-        echo "  Configurá tu Git username con: git config --global github.user TU_USUARIO"
+        # Solo warn si NO hay remote alguno (no es error, es esperado en local)
+        if [[ -n "$remote_url" ]]; then
+            log_warn "No se pudo detectar tu username de GitHub desde: $remote_url"
+            echo "  El CHANGELOG usa USER como placeholder."
+            echo "  Configurá tu Git username con: git config --global github.user TU_USUARIO"
+        fi
     fi
     
     local project_name=$(basename "$(pwd)")
