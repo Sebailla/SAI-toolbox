@@ -2180,13 +2180,13 @@ setup_gga() {
 
     log_info "Configurando Gentleman Guardian Angel (GGA)..."
 
-    local default_provider="claude"
+    local default_provider="opencode"
     case "$TARGET_AGENT" in
         claude)  default_provider="claude" ;;
-        cursor)  default_provider="claude" ;;
+        cursor)  default_provider="opencode" ;;
         opencode) default_provider="opencode" ;;
         gemini)  default_provider="gemini" ;;
-        all)     default_provider="claude" ;;
+        all)     default_provider="opencode" ;;
     esac
 
     log_info "Inicializando GGA..."
