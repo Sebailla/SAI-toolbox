@@ -40,8 +40,8 @@ fi
 # Crear directorio si no existe
 mkdir -p "$INSTALL_DIR"
 
-# URL del script
-SCRIPT_URL="https://raw.githubusercontent.com/Sebailla/SAI-toolbox/main/init-project.sh"
+# URL del script (rama configurable via SAI_BRANCH env var)
+SCRIPT_URL="https://raw.githubusercontent.com/Sebailla/SAI-toolbox/${SAI_BRANCH:-main}/init-project.sh"
 
 log "${CYAN}[1/3]${NC} Descargando init-projects...\n"
 if ! curl -fsSL --connect-timeout 30 --max-time 120 "$SCRIPT_URL" -o "$INSTALL_DIR/init-projects.tmp"; then
@@ -63,7 +63,16 @@ if ! head -1 "$INSTALL_DIR/init-projects.tmp" | grep -q "^#!/"; then
     exit 1
 fi
 
-# Mover a destino final
+# Mover a destino final (verificar que no exista para evitar sobreescritura accidental)
+if [ -f "$INSTALL_DIR/init-projects" ]; then
+    log_warn "Ya existe una instalación previa en $INSTALL_DIR/init-projects"
+    read -r -t 10 -p "   └─►  ¿Sobrescribir? [s/N]: " OVERWRITE
+    if [[ ! "$OVERWRITE" =~ ^[Ss]$ ]]; then
+        log_info "Instalación cancelada."
+        rm -f "$INSTALL_DIR/init-projects.tmp"
+        exit 0
+    fi
+fi
 mv "$INSTALL_DIR/init-projects.tmp" "$INSTALL_DIR/init-projects"
 
 log "${CYAN}[2/3]${NC} Haciendo ejecutable...\n"
@@ -71,8 +80,31 @@ chmod +x "$INSTALL_DIR/init-projects"
 
 log "${CYAN}[3/3]${NC} Configurando PATH...\n"
 
-# Detectar shell activo (no solo OS)
-SHELL_NAME=$(basename "$SHELL")
+# Detectar shell activo usando múltiples métodos para mayor precisión
+detect_shell() {
+    # 1. Intentar desde el proceso padre (más confiable en Linux)
+    if [ -f "/proc/$PPID/comm" ]; then
+        local parent_shell=$(cat "/proc/$PPID/comm" 2>/dev/null)
+        case "$parent_shell" in
+            *zsh)  echo "zsh"; return ;;
+            *bash) echo "bash"; return ;;
+            *fish) echo "fish"; return ;;
+        esac
+    fi
+    # 2. Intentar desde ps (funciona en macOS y Linux)
+    if command -v ps &>/dev/null; then
+        local current_shell=$(ps -p $$ -o comm= 2>/dev/null | tr -d ' ')
+        case "$current_shell" in
+            *zsh)  echo "zsh"; return ;;
+            *bash) echo "bash"; return ;;
+            *fish) echo "fish"; return ;;
+        esac
+    fi
+    # 3. Fallback: usar SHELL env var
+    basename "$SHELL"
+}
+
+SHELL_NAME=$(detect_shell)
 case "$SHELL_NAME" in
     zsh)
         SHELL_PROFILE="$HOME/.zshrc"

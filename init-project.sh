@@ -46,12 +46,20 @@ CLEANUP_DONE=0
 
 cleanup() {
     local exit_code=${1:-0}
-    cd "$ORIGINAL_DIR"
-    # Evitar ejecución múltiple del cleanup
+    # Evitar ejecución múltiple del cleanup (usar variable local para atomicidad)
+    local already_cleaned=0
     if [ "$CLEANUP_DONE" -eq 1 ]; then
         return
     fi
     CLEANUP_DONE=1
+    already_cleaned=1
+
+    # Cambiar al directorio original solo si existe
+    if [ -d "$ORIGINAL_DIR" ]; then
+        cd "$ORIGINAL_DIR" 2>/dev/null || cd /tmp
+    else
+        cd /tmp 2>/dev/null || true
+    fi
 
     if [ "$PROJECT_CREATED" -eq 1 ]; then
         # El proyecto se creó pero algo falló después
@@ -851,9 +859,9 @@ require (
 )
 EOF
 
-    go mod tidy
+    run_with_timeout 120 go mod tidy
 
-    go get github.com/gin-gonic/gin@v1.9.1
+    run_with_timeout 60 go get github.com/gin-gonic/gin@v1.9.1
 
     mkdir -p .agent/skills plans specs designs .github/workflows
     log_success "Proyecto Go + Gin configurado"
@@ -1453,12 +1461,12 @@ setup_husky() {
 
     # Usar el gestor de paquetes seleccionado
     local install_cmd=""
-    local exec_cmd=""
+    local pkg_exec_cmd=""
     case "$SELECTED_PKG_MANAGER" in
-        bun)   install_cmd="bun install" ;;
-        pnpm)  install_cmd="pnpm install" ;;
-        npm)   install_cmd="npm install" ;;
-        *)     install_cmd="bun install" ;;
+        bun)   install_cmd="bun install"; pkg_exec_cmd="bunx" ;;
+        pnpm)  install_cmd="pnpm install"; pkg_exec_cmd="pnpm exec" ;;
+        npm)   install_cmd="npm install"; pkg_exec_cmd="npm exec" ;;
+        *)     install_cmd="bun install"; pkg_exec_cmd="bunx" ;;
     esac
 
     log_info "Instalando dependencias antes de Husky..."
@@ -1479,7 +1487,7 @@ setup_husky() {
 
     cat > .husky/commit-msg <<EOF
 #!/usr/bin/env bash
-${SELECTED_PKG_MANAGER} exec commitlint --edit "\$1"
+${pkg_exec_cmd} exec commitlint --edit "\$1"
 EOF
     chmod +x .husky/commit-msg
 
@@ -1506,7 +1514,7 @@ EOF
     case "$SELECTED_PKG_MANAGER" in
         bun)
             test_cmd="bun test --run --passWithNoTests"
-            pkg_exec_cmd="bun"
+            pkg_exec_cmd="bunx"
             ;;
         pnpm)
             test_cmd="pnpm test --run --passWithNoTests"
@@ -1526,14 +1534,18 @@ EOF
         cat > .husky/pre-commit <<EOF
 #!/usr/bin/env bash
 ${test_cmd}
-${pkg_exec_cmd} exec lint-staged
+# lint-staged requiere .lintstagedrc o config en package.json
+# Si no tenés config, descomentá la siguiente línea:
+# ${pkg_exec_cmd} exec lint-staged
 gga run || exit 1
 EOF
     else
         cat > .husky/pre-commit <<EOF
 #!/usr/bin/env bash
 ${test_cmd}
-${pkg_exec_cmd} exec lint-staged
+# lint-staged requiere .lintstagedrc o config en package.json
+# Si no tenés config, descomentá la siguiente línea:
+# ${pkg_exec_cmd} exec lint-staged
 EOF
     fi
     chmod +x .husky/pre-commit
@@ -1576,16 +1588,16 @@ setup_scripts() {
     
     # Agregar scripts a package.json usando jq o sed
     if command -v jq &>/dev/null; then
-        jq '.scripts += {
+        jq --arg run_cmd "$run_cmd" '.scripts += {
             "test": "vitest",
             "db:seed": "tsx prisma/seed.ts",
-            "db:reset": "prisma migrate reset --force && '$run_cmd' run db:seed",
+            "db:reset": "prisma migrate reset --force && \($run_cmd) run db:seed",
             "release": "standard-version"
         }' package.json > package.json.tmp && mv package.json.tmp package.json 2>/dev/null || log_warn "No se pudieron configurar los scripts"
         
         # Agregar overrides si aplica
         if [ "$SELECTED_PKG_MANAGER" = "npm" ] || [ "$SELECTED_PKG_MANAGER" = "bun" ]; then
-            jq '.overrides += {"babel-plugin-react-compiler":"^0.0.0-experimental-71f1f4c6-20240515"}' package.json > package.json.tmp && mv package.json.tmp package.json 2>/dev/null || true
+            jq 'if has("overrides") then .overrides += {"babel-plugin-react-compiler":"^0.0.0-experimental-71f1f4c6-20240515"} else .overrides = {"babel-plugin-react-compiler":"^0.0.0-experimental-71f1f4c6-20240515"} end' package.json > package.json.tmp && mv package.json.tmp package.json 2>/dev/null || true
         fi
     else
         # Fallback: usar sed para agregar scripts
@@ -1676,8 +1688,10 @@ EOF
         # https://github.com/username/repo.git
         # git@github.com:username/repo.git
         # ssh://git@github.com/username/repo
-        if [[ "$remote_url" =~ github\.com[/:]([^/]+) ]]; then
-            github_user="${BASH_REMATCH[1]}"
+        # Usar sed (portable BSD/GNU) en lugar de grep -oP que no tiene \K en macOS
+        github_user=$(echo "$remote_url" | sed -E 's|.*github.com[/:]||' | cut -d/ -f1) || true
+        if [ -z "$github_user" ]; then
+            github_user="USER"
         fi
     fi
     if [[ "$github_user" == "USER" ]]; then
