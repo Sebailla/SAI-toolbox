@@ -102,11 +102,15 @@ select_project_name() {
             continue
         fi
 
-        # Sanitizar nombre: debe empezar con letra, solo letras, números, guiones y guiones bajos
-        if [[ ! "$PROJECT_NAME" =~ ^[a-zA-Z][a-zA-Z0-9_-]*$ ]]; then
-            log_error "Debe empezar con una letra, solo letras, números, guiones (-) y guiones bajos (_)"
+        # Sanitizar nombre: debe empezar con letra minúscula, solo letras minúsculas, números, guiones y guiones bajos
+        # npm/npmrc exige minúsculas para package.json name
+        if [[ ! "$PROJECT_NAME" =~ ^[a-z][a-z0-9_-]*$ ]]; then
+            log_error "Debe empezar con letra minúscula, solo letras minúsculas, números, guiones (-) y guiones bajos (_)"
             continue
         fi
+
+        # Convertir a minúsculas por seguridad (npm naming restrictions)
+        PROJECT_NAME="${PROJECT_NAME,,}"
 
         # Verificar que no exista el directorio
         if [ -d "$PROJECT_NAME" ]; then
