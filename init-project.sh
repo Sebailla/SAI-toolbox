@@ -513,7 +513,7 @@ create_frontend_next() {
         || log_warn "Algunas devDependencies no se instalaron"
 
     log_info "Inicializando Prisma..."
-    $pkg_exec_cmd exec prisma init || log_warn "Prisma init falló"
+    $pkg_exec_cmd x prisma init || log_warn "Prisma init falló"
 
     mkdir -p prisma
     cat > prisma/schema.prisma <<'EOF'
@@ -613,7 +613,7 @@ create_frontend_vite() {
         || log_warn "Algunas devDependencies no se instalaron"
 
     log_info "Inicializando Prisma..."
-    $pkg_exec_cmd exec prisma init || log_warn "Prisma init falló"
+    $pkg_exec_cmd x prisma init || log_warn "Prisma init falló"
 
     mkdir -p prisma
     cat > prisma/schema.prisma <<'EOF'
@@ -732,7 +732,7 @@ create_backend_nestjs() {
         || log_warn "Algunas devDependencies no se instalaron"
 
     log_info "Inicializando Prisma..."
-    $pkg_exec_cmd exec prisma init || log_warn "Prisma init falló"
+    $pkg_exec_cmd x prisma init || log_warn "Prisma init falló"
 
     mkdir -p prisma
     cat > prisma/schema.prisma <<'EOF'
