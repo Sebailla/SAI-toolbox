@@ -515,7 +515,7 @@ create_frontend_next() {
     log_info "Inicializando Prisma..."
     $pkg_exec_cmd exec prisma init || log_warn "Prisma init falló"
 
-    log_info "Configurando Prisma schema..."
+    mkdir -p prisma
     cat > prisma/schema.prisma <<'EOF'
 generator client {
   provider = "prisma-client-js"
@@ -537,164 +537,7 @@ EOF
 }
 
 # ============================================================================
-# Environment Template
-# ============================================================================
-
-setup_env_template() {
-    log_info "Creando .env.template para PostgreSQL..."
-
-    cat > .env.template <<'EOF'
-# Database
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?schema=public"
-
-# Auth
-JWT_SECRET="your-super-secret-jwt-token-change-in-production"
-JWT_EXPIRES_IN="7d"
-
-# App
-APP_URL="http://localhost:3000"
-NODE_ENV="development"
-EOF
-
-    log_success ".env.template creado"
-}
-
-# ============================================================================
-# Estructura Modular
-# ============================================================================
-
-create_modular_structure() {
-    log_info "Creando estructura Modular Vertical Slicing..."
-
-    mkdir -p src/core/lib src/core/types src/core/hooks
-    mkdir -p src/modules/example/components src/modules/example/services
-    touch src/modules/example/actions.ts src/modules/example/types.ts src/modules/example/index.ts
-    mkdir -p .docs .agent/skills plans specs designs .github/workflows
-}
-
-# ============================================================================
-# Estructura Hexagonal (Clean Architecture)
-# ============================================================================
-
-create_hexagonal_structure() {
-    log_info "Creando estructura Hexagonal (Clean Architecture)..."
-
-    # Domain - Core business logic (no external dependencies)
-    mkdir -p src/domain/entities
-    mkdir -p src/domain/value-objects
-    mkdir -p src/domain/services
-    mkdir -p src/domain/events
-    mkdir -p src/domain/exceptions
-    mkdir -p src/domain/interfaces
-
-    # Application - Use cases and application services
-    mkdir -p src/application/use-cases
-    mkdir -p src/application/dto
-    mkdir -p src/application/ports/in
-    mkdir -p src/application/ports/out
-
-    # Infrastructure - External adapters
-    mkdir -p src/infrastructure/persistence/repositories
-    mkdir -p src/infrastructure/http/controllers
-    mkdir -p src/infrastructure/http/middleware
-    mkdir -p src/infrastructure/queue
-    mkdir -p src/infrastructure/external
-
-    # Shared - Utilities
-    mkdir -p src/shared/constants
-    mkdir -p src/shared/types
-    mkdir -p src/shared/utils
-
-    # API routes (Next.js App Router)
-    mkdir -p src/app/api/example
-
-    # Ejemplo de entidad
-    cat > src/domain/entities/Example.ts <<'EOF'
-// Domain Entity - Sin dependencias externas
-// Esta clase representa un concepto del dominio
-
-export interface ExampleProps {
-  id: string;
-  name: string;
-  createdAt: Date;
-}
-
-export class Example {
-  constructor(private props: ExampleProps) {}
-
-  get id(): string { return this.props.id; }
-  get name(): string { return this.props.name; }
-  get createdAt(): Date { return this.props.createdAt; }
-
-  // Domain methods
-  updateName(name: string): void {
-    if (!name || name.trim().length === 0) {
-      throw new Error('Name cannot be empty');
-    }
-    this.props.name = name.trim();
-  }
-}
-EOF
-
-    # Interfaz de repositorio (puerto de salida)
-    cat > src/domain/interfaces/IExampleRepository.ts <<'EOF'
-// Puerto de salida - Interface para repositorio
-import { Example } from '../entities/Example';
-
-export interface IExampleRepository {
-  findById(id: string): Promise<Example | null>;
-  findAll(): Promise<Example[]>;
-  save(example: Example): Promise<void>;
-  delete(id: string): Promise<void>;
-}
-EOF
-
-    # Use case de ejemplo
-    cat > src/application/use-cases/CreateExampleUseCase.ts <<'EOF'
-// Caso de uso - Lógica de aplicación
-// Orquesta el flujo entre entidades y repositorios
-
-import { Example, ExampleProps } from '../../domain/entities/Example';
-
-export interface CreateExampleInput {
-  name: string;
-}
-
-export interface IExampleRepository {
-  save(example: Example): Promise<void>;
-}
-
-export class CreateExampleUseCase {
-  constructor(private repository: IExampleRepository) {}
-
-  async execute(input: CreateExampleInput): Promise<Example> {
-    // Validaciones de aplicación
-    if (!input.name || input.name.trim().length === 0) {
-      throw new Error('Name is required');
-    }
-
-    // Crear entidad
-    const exampleProps: ExampleProps = {
-      id: crypto.randomUUID(),
-      name: input.name.trim(),
-      createdAt: new Date(),
-    };
-
-    const example = new Example(exampleProps);
-
-    // Persistir
-    await this.repository.save(example);
-
-    return example;
-  }
-}
-EOF
-
-    mkdir -p .docs .agent/skills plans specs designs .github/workflows
-}
-
-# ============================================================================
-# Frontend Vite
+# Vite + React
 # ============================================================================
 
 create_frontend_vite() {
@@ -772,6 +615,7 @@ create_frontend_vite() {
     log_info "Inicializando Prisma..."
     $pkg_exec_cmd exec prisma init || log_warn "Prisma init falló"
 
+    mkdir -p prisma
     cat > prisma/schema.prisma <<'EOF'
 generator client {
   provider = "prisma-client-js"
@@ -890,6 +734,7 @@ create_backend_nestjs() {
     log_info "Inicializando Prisma..."
     $pkg_exec_cmd exec prisma init || log_warn "Prisma init falló"
 
+    mkdir -p prisma
     cat > prisma/schema.prisma <<'EOF'
 generator client {
   provider = "prisma-client-js"
