@@ -594,6 +594,106 @@ EOF
 # Versionado Automático
 # ============================================================================
 
+setup_husky() {
+    log_info "Configurando Husky y Commitlint..."
+
+    # Verificar que .git existe (husky init lo necesita)
+    if [ ! -d ".git" ]; then
+        log_error "No se encontró .git. ¿Corriste git init?"
+        exit 1
+    fi
+
+    # Usar el gestor de paquetes seleccionado
+    local install_cmd=""
+    local pkg_exec_cmd=""
+    case "$SELECTED_PKG_MANAGER" in
+        bun)   install_cmd="bun install"; pkg_exec_cmd="bunx" ;;
+        pnpm)  install_cmd="pnpm install"; pkg_exec_cmd="pnpm exec" ;;
+        npm)   install_cmd="npm install"; pkg_exec_cmd="npm exec" ;;
+        *)     install_cmd="bun install"; pkg_exec_cmd="bunx" ;;
+    esac
+
+    log_info "Instalando dependencias antes de Husky..."
+    $install_cmd || log_warn "Instalación de deps falló, continuando..."
+
+    log_info "Inicializando Husky..."
+    $install_cmd --frozen-lockfile 2>/dev/null || $install_cmd 2>/dev/null || true
+
+    local husky_cmd="$install_cmd"
+    case "$SELECTED_PKG_MANAGER" in
+        bun)   husky_cmd="bunx husky init" ;;
+        pnpm)  husky_cmd="pnpm exec husky init" ;;
+        npm)   husky_cmd="npm exec husky init" ;;
+        *)     husky_cmd="bunx husky init" ;;
+    esac
+
+    $husky_cmd 2>/dev/null || log_warn "Husky init falló, continuando..."
+
+    cat > .husky/commit-msg <<'EOF'
+#!/usr/bin/env bash
+${pkg_exec_cmd} exec commitlint --edit "$1"
+EOF
+    chmod +x .husky/commit-msg
+
+    cat > .husky/pre-push <<'EOF'
+#!/usr/bin/env bash
+LOCAL_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+VALID_REGEX="^(feat|fix|hotfix|chore|docs|refactor|test)/[a-z0-9-]+$"
+
+if [[ "$LOCAL_BRANCH" == "main" || "$LOCAL_BRANCH" == "master" ]]; then
+    echo "No podés pushear directo a main."
+    exit 1
+fi
+
+if [[ "$LOCAL_BRANCH" != "develop" ]] && [[ ! $LOCAL_BRANCH =~ $VALID_REGEX ]]; then
+    echo "Rama inválida. Usá: tipo/nombre-en-kebab-case"
+    exit 1
+fi
+EOF
+    chmod +x .husky/pre-push
+
+    # GGA SIEMPRE en pre-commit si está instalado
+    local test_cmd=""
+    case "$SELECTED_PKG_MANAGER" in
+        bun)
+            test_cmd="bun test --run --passWithNoTests"
+            pkg_exec_cmd="bunx"
+            ;;
+        pnpm)
+            test_cmd="pnpm test --run --passWithNoTests"
+            pkg_exec_cmd="pnpm"
+            ;;
+        npm)
+            test_cmd="npm test --run --passWithNoTests"
+            pkg_exec_cmd="npm"
+            ;;
+        *)
+            test_cmd="bun test --run --passWithNoTests"
+            pkg_exec_cmd="bun"
+            ;;
+    esac
+
+    if command -v gga &>/dev/null; then
+        cat > .husky/pre-commit <<EOF
+#!/usr/bin/env bash
+${test_cmd}
+# lint-staged requiere .lintstagedrc o config en package.json
+# Si no tenés config, descomentá la siguiente línea:
+# ${pkg_exec_cmd} exec lint-staged
+gga run || exit 1
+EOF
+    else
+        cat > .husky/pre-commit <<EOF
+#!/usr/bin/env bash
+${test_cmd}
+# lint-staged requiere .lintstagedrc o config en package.json
+# Si no tenés config, descomentá la siguiente línea:
+# ${pkg_exec_cmd} exec lint-staged
+EOF
+    fi
+    chmod +x .husky/pre-commit
+}
+
 setup_versioning() {
     log_info "Configurando versionado semántico..."
 
