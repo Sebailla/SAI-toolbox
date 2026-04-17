@@ -117,7 +117,7 @@ main() {
         # Verificar que Docker esté corriendo
         if docker info &>/dev/null; then
             log_info "Iniciando contenedores Docker..."
-            if cd "$PROJECT_NAME" && docker compose up -d 2>/dev/null; then
+            if cd "$ORIGINAL_DIR/$PROJECT_NAME" && docker compose up -d 2>/dev/null; then
                 echo ""
                 log_success "Contenedores Docker iniciados"
                 echo ""
