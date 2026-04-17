@@ -79,7 +79,7 @@ El script es **completamente interactivo**. Solo ejecutá `init-projects` y te g
 
 ## 🐳 Docker Database (Opcional)
 
-El CLI puede generar contenedores Docker con bases de datos para desarrollo local:
+El CLI puede generar contenedores Docker con bases de datos para desarrollo local y los **inicia automáticamente** al terminar de crear el proyecto:
 
 ```
   ▸ 1) PostgreSQL (SQL - ideal para Prisma)
@@ -87,6 +87,15 @@ El CLI puede generar contenedores Docker con bases de datos para desarrollo loca
   ▸ 3) Ambas (PostgreSQL + MongoDB)
   ▸ 4) No incluir Docker
 ```
+
+### Auto-inicio
+
+Si elegiste Docker DB, al terminar de crear el proyecto:
+1. Verifica que Docker esté corriendo
+2. Ejecuta `docker compose up -d` para iniciar los contenedores
+3. Muestra los connection strings
+
+Si Docker no está corriendo, te avisa y te dice cómo iniciarlos después.
 
 ### Scripts generados
 
