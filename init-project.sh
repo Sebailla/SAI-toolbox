@@ -109,6 +109,39 @@ main() {
     setup_gga
     setup_docker_db
 
+    # Auto-iniciar contenedores Docker si se eligió Docker DB
+    if [ "$DOCKER_DB_TYPE" != "none" ]; then
+        echo ""
+        log "${CYAN}▸${NC} Verificando contenedores Docker..."
+
+        # Verificar que Docker esté corriendo
+        if docker info &>/dev/null; then
+            log_info "Iniciando contenedores Docker..."
+            if cd "$PROJECT_NAME" && docker compose up -d 2>/dev/null; then
+                echo ""
+                log_success "Contenedores Docker iniciados"
+                echo ""
+                log "${CYAN}Connection strings:${NC}"
+                if [ "$DOCKER_DB_TYPE" = "postgres" ] || [ "$DOCKER_DB_TYPE" = "both" ]; then
+                    echo "  ${GREEN}PostgreSQL:${NC}  postgresql://saiuser:saipass@localhost:5432/saidb"
+                fi
+                if [ "$DOCKER_DB_TYPE" = "mongodb" ] || [ "$DOCKER_DB_TYPE" = "both" ]; then
+                    echo "  ${CYAN}MongoDB:${NC}     mongodb://saiuser:saipass@localhost:27017/sai"
+                fi
+                echo ""
+            else
+                log_warn "No se pudieron iniciar los contenedores Docker."
+                echo "  Ejecutá ${CYAN}cd $PROJECT_NAME && docker compose up -d${NC} para iniciarlos después."
+                echo ""
+            fi
+            cd "$ORIGINAL_DIR"
+        else
+            log_warn "Docker no está corriendo. Los contenedores no se iniciaron."
+            echo "  Ejecutá ${CYAN}cd $PROJECT_NAME && docker compose up -d${NC} cuando Docker esté disponible."
+            echo ""
+        fi
+    fi
+
     echo ""
     log_success "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     log_success "  PROYECTO DESPLEGADO: $PROJECT_NAME"
@@ -120,7 +153,7 @@ main() {
         log_success "  Arquitectura: $ARCHITECTURE"
     fi
     if [ "$DOCKER_DB_TYPE" != "none" ]; then
-        log_success "  Docker DB: $DOCKER_DB_TYPE"
+        log_success "  Docker DB: $DOCKER_DB_TYPE (iniciado)"
     fi
     log_success "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
