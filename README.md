@@ -130,6 +130,16 @@ mongodb://saiuser:saipass@localhost:27017/sai
 redis://default:redis123@localhost:6379
 ```
 
+### Visualizadores Web (Admin GUIs)
+
+Cada base de datos incluye su panel de administración web:
+
+| Servicio | Puerto | URL | Credenciales |
+|----------|--------|-----|--------------|
+| **Adminer** (PostgreSQL) | 8080 | http://localhost:8080 | - |
+| **MongoDB Express** | 8081 | http://localhost:8081 | saiusers / saipass |
+| **Redis Commander** | 8082 | http://localhost:8082 | - |
+
 ---
 
 ## 📦 Arquitectura Modular

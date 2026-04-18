@@ -1393,6 +1393,77 @@ EOF
         log_success "Redis configurado en puerto 6379"
     fi
     
+    # Adminer (visualizador para PostgreSQL)
+    if [ "$DOCKER_DB_TYPE" = "postgres" ] || [ "$DOCKER_DB_TYPE" = "postgres-redis" ] || [ "$DOCKER_DB_TYPE" = "all" ] || [ "$DOCKER_DB_TYPE" = "both" ]; then
+        cat >> docker-compose.yml <<'EOF'
+
+  adminer:
+    image: adminer:latest
+    container_name: sai_adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+EOF
+        log_success "Adminer (PostgreSQL admin) configurado en puerto 8080"
+    fi
+    
+    # MongoDB Express (visualizador para MongoDB)
+    if [ "$DOCKER_DB_TYPE" = "mongodb" ] || [ "$DOCKER_DB_TYPE" = "mongodb-redis" ] || [ "$DOCKER_DB_TYPE" = "all" ] || [ "$DOCKER_DB_TYPE" = "both" ]; then
+        cat >> docker-compose.yml <<'EOF'
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: sai_mongo_express
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_URL: "mongodb://saiuser:saipass@mongodb:27017/sai"
+      ME_CONFIG_BASICAUTH_USERNAME: "saiuser"
+      ME_CONFIG_BASICAUTH_PASSWORD: "saipass"
+    depends_on:
+      - mongodb
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8081"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+EOF
+        log_success "MongoDB Express configurado en puerto 8081"
+    fi
+    
+    # Redis Commander (visualizador para Redis)
+    if [ "$DOCKER_DB_TYPE" = "redis" ] || [ "$DOCKER_DB_TYPE" = "postgres-redis" ] || [ "$DOCKER_DB_TYPE" = "mongodb-redis" ] || [ "$DOCKER_DB_TYPE" = "all" ]; then
+        cat >> docker-compose.yml <<'EOF'
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: sai_redis_commander
+    ports:
+      - "8082:8081"
+    environment:
+      REDIS_HOSTS: "local:sai_redis:6379"
+      REDIS_HOST: "sai_redis"
+      REDIS_PORT: "6379"
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8081"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+EOF
+        log_success "Redis Commander configurado en puerto 8082"
+    fi
+    
     # Volumes al final del archivo
     cat >> docker-compose.yml <<'EOF'
 
@@ -1484,6 +1555,28 @@ fi
 if docker compose ps redis &>/dev/null; then
     printf '%b\n' "  ${YELLOW}Redis:${NC}"
     printf '%s\n' "    redis://default:redis123@localhost:6379"
+    echo ""
+fi
+
+# Adminer
+if docker compose ps adminer &>/dev/null; then
+    printf '%b\n' "  ${GREEN}Adminer (PostgreSQL):${NC}"
+    printf '%s\n' "    http://localhost:8080"
+    echo ""
+fi
+
+# MongoDB Express
+if docker compose ps mongo-express &>/dev/null; then
+    printf '%b\n' "  ${CYAN}MongoDB Express:${NC}"
+    printf '%s\n' "    http://localhost:8081"
+    printf '%s\n' "    User: saiusers / Pass: saipass"
+    echo ""
+fi
+
+# Redis Commander
+if docker compose ps redis-commander &>/dev/null; then
+    printf '%b\n' "  ${YELLOW}Redis Commander:${NC}"
+    printf '%s\n' "    http://localhost:8082"
     echo ""
 fi
 

@@ -131,6 +131,15 @@ main() {
                 if [ "$DOCKER_DB_TYPE" = "redis" ] || [ "$DOCKER_DB_TYPE" = "postgres-redis" ] || [ "$DOCKER_DB_TYPE" = "mongodb-redis" ] || [ "$DOCKER_DB_TYPE" = "all" ]; then
                     echo "  ${YELLOW}Redis:${NC}       redis://default:redis123@localhost:6379"
                 fi
+                if [ "$DOCKER_DB_TYPE" = "postgres" ] || [ "$DOCKER_DB_TYPE" = "postgres-redis" ] || [ "$DOCKER_DB_TYPE" = "all" ] || [ "$DOCKER_DB_TYPE" = "both" ]; then
+                    echo "  ${GREEN}Adminer:${NC}     http://localhost:8080 (PostgreSQL admin)"
+                fi
+                if [ "$DOCKER_DB_TYPE" = "mongodb" ] || [ "$DOCKER_DB_TYPE" = "mongodb-redis" ] || [ "$DOCKER_DB_TYPE" = "all" ] || [ "$DOCKER_DB_TYPE" = "both" ]; then
+                    echo "  ${CYAN}Mongo Express:${NC} http://localhost:8081 (MongoDB admin)"
+                fi
+                if [ "$DOCKER_DB_TYPE" = "redis" ] || [ "$DOCKER_DB_TYPE" = "postgres-redis" ] || [ "$DOCKER_DB_TYPE" = "mongodb-redis" ] || [ "$DOCKER_DB_TYPE" = "all" ]; then
+                    echo "  ${YELLOW}Redis Commander:${NC} http://localhost:8082 (Redis admin)"
+                fi
                 echo ""
             else
                 log_warn "No se pudieron iniciar los contenedores Docker."
