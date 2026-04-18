@@ -190,7 +190,7 @@ The entry point `init-project.sh` MUST:
 - `ARCHITECTURE` - modular/hexagonal
 - `TARGET_AGENT` - opencode/claude/cursor/gemini/all
 - `USE_GRAPHIFY` - yes/no
-- `DOCKER_DB_TYPE` - postgres/mongodb/both/none
+- `DOCKER_DB_TYPE` - postgres/mongodb/redis/postgres-redis/mongodb-redis/all/both/none
 
 **Global Variables** (MUST read):
 - `PROJECT_TYPE` - to determine if backend/monorepo for `select_backend_type`
@@ -224,6 +224,32 @@ The entry point `init-project.sh` MUST:
 - WHEN `select_docker_db` is called
 - THEN only option "No incluir Docker" is shown
 - AND `DOCKER_DB_TYPE` is set to "none"
+
+#### Scenario: select_docker_db Shows 7 Options
+
+- GIVEN Docker is available
+- WHEN `select_docker_db` is called
+- THEN user sees 7 options:
+  1) PostgreSQL
+  2) MongoDB
+  3) Redis
+  4) PostgreSQL + Redis
+  5) MongoDB + Redis
+  6) Todas
+  7) No incluir Docker
+
+#### Scenario: select_docker_db Returns Correct DOCKER_DB_TYPE
+
+- GIVEN user selects each option
+- WHEN `select_docker_db` processes selection
+- THEN DOCKER_DB_TYPE is set correctly:
+  - Option 1 → "postgres"
+  - Option 2 → "mongodb"
+  - Option 3 → "redis"
+  - Option 4 → "postgres-redis"
+  - Option 5 → "mongodb-redis"
+  - Option 6 → "all"
+  - Option 7 → "none"
 
 ---
 
@@ -331,6 +357,42 @@ The entry point `init-project.sh` MUST:
 - WHEN `setup_docker_db` is called
 - THEN function returns immediately without creating files
 
+#### Scenario: setup_docker_db Generates Redis Service
+
+- GIVEN `DOCKER_DB_TYPE` includes "redis" (redis/postgres-redis/mongodb-redis/all)
+- WHEN `setup_docker_db` is called
+- THEN `docker-compose.yml` contains service `redis` with:
+  - image: `redis:7.2-alpine`
+  - ports: `6379:6379`
+  - volumes: `redis_data:/data`
+  - command: `redis-server --appendonly yes`
+  - healthcheck: `redis-cli ping`
+
+#### Scenario: setup_docker_db Generates Admin GUIs
+
+- GIVEN `DOCKER_DB_TYPE` includes database
+- WHEN `setup_docker_db` is called
+- THEN `docker-compose.yml` contains corresponding admin GUI:
+
+| DOCKER_DB_TYPE | Admin Service | Image | Port |
+|----------------|---------------|-------|------|
+| postgres/postgres-redis/all/both | adminer | adminer:latest | 8080 |
+| mongodb/mongodb-redis/all/both | mongo-express | mongo-express:latest | 8081 |
+| redis/postgres-redis/mongodb-redis/all | redis-commander | rediscommander/redis-commander:latest | 8082 |
+
+#### Scenario: Admin GUIs Depend on Database
+
+- GIVEN admin GUI service is configured
+- WHEN docker-compose starts containers
+- THEN admin GUI waits for database via `depends_on`
+- AND database must be healthy before admin GUI starts
+
+#### Scenario: setup_docker_db Creates Volume redis_data
+
+- GIVEN `DOCKER_DB_TYPE` includes redis
+- WHEN `setup_docker_db` is called
+- THEN `docker-compose.yml` contains volume `redis_data`
+
 ---
 
 ### Requirement: Sourcing Order and Dependencies
@@ -406,12 +468,12 @@ None. This is a pure refactor with no functional changes.
 
 | File Path | Lines (est.) | Functions | Purpose |
 |-----------|--------------|-----------|---------|
-| `init-project/init-project.sh` | ~150 | 3 (main, slugify, source loop) | Entry point |
+| `init-project/init-project.sh` | ~200 | 3 (main, slugify, source loop) | Entry point |
 | `init-project/lib/core.sh` | ~100 | 8 | Logging, colors, cleanup, timeout |
 | `init-project/lib/validators.sh` | ~80 | 2 | Dependency and Docker checks |
-| `init-project/lib/selectors.sh` | ~350 | 9 | Interactive project configuration |
+| `init-project/lib/selectors.sh` | ~420 | 9 | Interactive project configuration |
 | `init-project/lib/builders.sh` | ~600 | 5 | Project scaffolding |
-| `init-project/lib/setup.sh` | ~750 | 16 | Post-scaffold configuration |
+| `init-project/lib/setup.sh` | ~1800 | 16 | Post-scaffold configuration (Docker + Admin GUIs) |
 
 ---
 
@@ -425,10 +487,17 @@ None. This is a pure refactor with no functional changes.
 | AC4 | curl installation works | `curl -fsSL file://$(pwd)/init-project/init-project.sh \| bash -c 'type main'` |
 | AC5 | No behavior changes | Diff of function outputs before/after refactor |
 | AC6 | Sourcing order correct | `bash -x init-project/init-project.sh -c 'type log' 2>&1 \| grep -c 'source'` |
-| AC7 | Global variables preserved | `grep -E '^(RED|GREEN|SELECTED_PKG_MANAGER|PROJECT_TYPE)' init-project/init-project.sh` |
+| AC7 | Global variables preserved | `grep -E '^(RED\|GREEN\|SELECTED_PKG_MANAGER\|PROJECT_TYPE)' init-project/init-project.sh` |
 | AC8 | cleanup trap set | `grep "trap 'cleanup" init-project/init-project.sh` |
 | AC9 | Modules in correct directory | `ls init-project/lib/` shows 5 .sh files |
 | AC10 | Entry point sources modules | `grep "source.*lib/" init-project/init-project.sh` |
+| AC11 | Docker DB shows 7 options | Interactivo: `select_docker_db` muestra opciones 1-7 |
+| AC12 | Redis service in compose | `docker compose config` incluye servicio redis |
+| AC13 | Adminer service for postgres | `docker compose config` incluye adminer (8080) |
+| AC14 | MongoDB Express for mongodb | `docker compose config` incluye mongo-express (8081) |
+| AC15 | Redis Commander for redis | `docker compose config` incluye redis-commander (8082) |
+| AC16 | Healthchecks configured | `docker compose config` muestra healthcheck en cada servicio |
+| AC17 | redis_data volume exists | `docker compose config` incluye volumen redis_data |
 
 ---
 
