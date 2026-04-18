@@ -1,40 +1,40 @@
-# Proposal: Modularize init-project.sh
+# Propuesta: Modularizar init-project.sh
 
-## Intent
+## Intención
 
-Refactor `init-project.sh` (2836 lines, 44 functions) into a modular structure to improve maintainability, enable per-module testing, and facilitate extensibility without modifying core logic.
+Refactorizar `init-project.sh` (2836 líneas, 44 funciones) a una estructura modular para mejorar mantenibilidad, habilitar testing por módulo, y facilitar extensibilidad sin modificar lógica core.
 
-## Scope
+## Alcance
 
-### In Scope
-- Create `init-project/lib/` directory structure
-- Extract functions into 5 logical modules by category
-- Ensure `init-project.sh` sources all modules at startup
-- Maintain 100% backward compatibility for `curl -fsSL URL | bash`
-- Preserve all 44 function signatures and outputs
+### Incluido
+- Crear estructura de directorio `init-project/lib/`
+- Extraer funciones a 5 módulos lógicos por categoría
+- Asegurar que `init-project.sh` haga source de todos los módulos al inicio
+- Mantener 100% compatibilidad hacia atrás para `curl -fsSL URL | bash`
+- Preservar las 44 firmas de funciones y outputs
 
-### Out of Scope
-- Behavior changes or new features
-- Shellcheck compliance improvements
-- Testing infrastructure setup
+### Excluido
+- Cambios de comportamiento o nuevas features
+- Mejoras de compliance con Shellcheck
+- Setup de infraestructura de testing
 
-## Approach
+## Enfoque
 
-### Target Structure
+### Estructura Objetivo
 ```
 init-project/
-├── init-project.sh          # Entry point (~150 lines) - sources modules, calls main()
+├── init-project.sh          # Punto de entrada (~150 líneas) - source módulos, llama main()
 └── lib/
-    ├── core.sh              # Constants, colors, log functions, banner, cleanup, timeout
+    ├── core.sh              # Constantes, colores, funciones log, banner, cleanup, timeout
     ├── validators.sh        # check_dependencies, check_docker, detect_type, confirm_setup
-    ├── selectors.sh         # All select_*() interactive functions (8 functions)
-    ├── builders.sh          # All create_*() functions (5 functions)
-    └── setup.sh             # All setup_*() functions (16 functions)
+    ├── selectors.sh         # Todas las funciones interactivas select_*() (8 funciones)
+    ├── builders.sh          # Todas las funciones create_*() (5 funciones)
+    └── setup.sh             # Todas las funciones setup_*() (16 funciones)
 ```
 
-### Function Mapping
+### Mapeo de Funciones
 
-| Module | Functions |
+| Módulo | Funciones |
 |--------|-----------|
 | `core.sh` | log, log_info, log_success, log_warn, log_error, print_banner, cleanup, run_with_timeout |
 | `validators.sh` | check_dependencies, check_docker, detect_type, confirm_setup |
@@ -42,48 +42,48 @@ init-project/
 | `builders.sh` | create_frontend_next, create_frontend_vite, create_backend_nestjs, create_backend_golang, create_monorepo |
 | `setup.sh` | setup_github_actions, setup_env_template, setup_vscode, setup_agents_md, setup_agent_rules, setup_skills, setup_husky, setup_scripts, setup_vitest, setup_versioning, enrich_gitignore, setup_git_workflow, setup_git_initial, setup_graphify, setup_gga, setup_docker_db |
 
-### Entry Point Responsibilities
-`init-project.sh` will contain:
-- Global variable declarations (SELECTED_PKG_MANAGER, PROJECT_TYPE, etc.)
-- `slugify()` utility function
-- `config()` function
-- `main()` orchestration function
-- `source lib/*.sh` loop at top
-- `set -e` and trap setup
+### Responsabilidades del Punto de Entrada
+`init-project.sh` contendrá:
+- Declaraciones de variables globales (SELECTED_PKG_MANAGER, PROJECT_TYPE, etc.)
+- Función utilitaria `slugify()`
+- Función `config()`
+- Función de orquestación `main()`
+- Loop `source lib/*.sh` al inicio
+- `set -e` y setup de trap
 
-## Affected Areas
+## Áreas Afectadas
 
-| Area | Impact | Description |
-|------|--------|-------------|
-| `init-project.sh` | Modified | Shrinks from 2836 to ~150 lines |
-| `init-project/lib/core.sh` | New | Constants, logging, cleanup, banner |
-| `init-project/lib/validators.sh` | New | Dependency and docker checks |
-| `init-project/lib/selectors.sh` | New | All interactive selectors |
-| `init-project/lib/builders.sh` | New | All project creators |
-| `init-project/lib/setup.sh` | New | All setup functions |
+| Área | Impacto | Descripción |
+|------|---------|-------------|
+| `init-project.sh` | Modificado | Reduce de 2836 a ~150 líneas |
+| `init-project/lib/core.sh` | Nuevo | Constantes, logging, cleanup, banner |
+| `init-project/lib/validators.sh` | Nuevo | Verificación de dependencias y docker |
+| `init-project/lib/selectors.sh` | Nuevo | Todos los selectores interactivos |
+| `init-project/lib/builders.sh` | Nuevo | Todos los creators de proyectos |
+| `init-project/lib/setup.sh` | Nuevo | Todas las funciones de setup |
 
-## Risks
+## Riesgos
 
-| Risk | Likelihood | Mitigation |
-|------|------------|------------|
-| Path issues when sourced | Low | Use `$(dirname "${BASH_SOURCE[0]}")` for relative paths |
-| Global variable scope breakage | Low | Declare globals in entry point, use `export` where needed |
-| `curl -fsSL` backward compatibility | Low | Keep entry point as single file, verify with `bash -n` |
+| Riesgo | Probabilidad | Mitigación |
+|--------|-------------|------------|
+| Problemas de path cuando se hace source | Baja | Usar `$(dirname "${BASH_SOURCE[0]}")` para paths relativos |
+| Rotura de scope de variables globales | Baja | Declarar globals en entry point, usar `export` donde sea necesario |
+| Compatibilidad hacia atrás `curl -fsSL` | Baja | Mantener entry point como archivo único, verificar con `bash -n` |
 
-## Rollback Plan
+## Plan de Rollback
 
-1. Delete `init-project/lib/` directory
-2. Restore original `init-project.sh` from git history
-3. Single `git checkout` revert
+1. Eliminar directorio `init-project/lib/`
+2. Restaurar `init-project.sh` original desde git history
+3. Revert simple con `git checkout`
 
-## Dependencies
+## Dependencias
 
-- None (pure bash refactor)
+- Ninguna (refactorización pura en bash)
 
-## Success Criteria
+## Criterios de Éxito
 
-- [ ] `bash -n init-project.sh` passes
-- [ ] `bash -n init-project/lib/*.sh` all pass
-- [ ] `curl -fsSL local-path/init-project.sh | bash` works
-- [ ] All 44 original functions exist with identical signatures
-- [ ] No behavior changes in any function
+- [ ] `bash -n init-project.sh` pasa
+- [ ] `bash -n init-project/lib/*.sh` todos pasan
+- [ ] `curl -fsSL local-path/init-project.sh | bash` funciona
+- [ ] Las 44 funciones originales existen con firmas idénticas
+- [ ] Sin cambios de comportamiento en ninguna función

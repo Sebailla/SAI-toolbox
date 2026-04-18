@@ -1,38 +1,38 @@
-# Tasks: Modularize init-project.sh
+# Tareas: Modularizar init-project.sh
 
-## Phase 1: Infrastructure
+## Fase 1: Infraestructura
 
-- [ ] 1.1 Create directory structure: `mkdir -p init-project/lib`
-- [ ] 1.2 Backup original monolithic script: `git add init-project.sh && git commit -m "chore: backup monolithic init-project.sh before modular refactor"`
+- [ ] 1.1 Crear estructura de directorio: `mkdir -p init-project/lib`
+- [ ] 1.2 Backup del script monolítico original: `git add init-project.sh && git commit -m "chore: backup monolithic init-project.sh before modular refactor"`
 
-## Phase 2: Module Extraction (Dependency Order)
+## Fase 2: Extracción de Módulos (Orden de Dependencias)
 
-- [ ] 2.1 Create `init-project/lib/core.sh` — extract color constants, `log`/`log_info`/`log_success`/`log_warn`/`log_error`, `print_banner`, `run_with_timeout` (~100 lines, 8 functions)
-- [ ] 2.2 Create `init-project/lib/validators.sh` — extract `check_dependencies`, `check_docker` (~80 lines, 2 functions; depends on core.sh)
-- [ ] 2.3 Create `init-project/lib/selectors.sh` — extract all `select_*` functions and `confirm_setup` (~350 lines, 9 functions; depends on core.sh, validators.sh)
-- [ ] 2.4 Create `init-project/lib/builders.sh` — extract all `create_*` functions (~600 lines, 5 functions; depends on core.sh, validators.sh)
-- [ ] 2.5 Create `init-project/lib/setup.sh` — extract all `setup_*` and `enrich_gitignore` functions (~750 lines, 16 functions; depends on core.sh)
+- [ ] 2.1 Crear `init-project/lib/core.sh` — extraer constantes de color, `log`/`log_info`/`log_success`/`log_warn`/`log_error`, `print_banner`, `run_with_timeout` (~100 líneas, 8 funciones)
+- [ ] 2.2 Crear `init-project/lib/validators.sh` — extraer `check_dependencies`, `check_docker` (~80 líneas, 2 funciones; depende de core.sh)
+- [ ] 2.3 Crear `init-project/lib/selectors.sh` — extraer todas las funciones `select_*` y `confirm_setup` (~350 líneas, 9 funciones; depende de core.sh, validators.sh)
+- [ ] 2.4 Crear `init-project/lib/builders.sh` — extraer todas las funciones `create_*` (~600 líneas, 5 funciones; depende de core.sh, validators.sh)
+- [ ] 2.5 Crear `init-project/lib/setup.sh` — extraer todas las funciones `setup_*` y `enrich_gitignore` (~750 líneas, 16 funciones; depende de core.sh)
 
-## Phase 3: Entry Point Creation
+## Fase 3: Creación del Punto de Entrada
 
-- [ ] 3.1 Create `init-project/init-project.sh` (~150 lines): declare global variables, `slugify()` function, source loop `for lib in "$(dirname "${BASH_SOURCE[0]}")/lib/"*.sh`, `cleanup()` with idempotency, `trap 'cleanup $? EXIT INT TERM'`, `main()` orchestration, `main "$@"`
-- [ ] 3.2 Delete original monolithic `init-project.sh` (now replaced by directory)
+- [ ] 3.1 Crear `init-project/init-project.sh` (~150 líneas): declarar variables globales, función `slugify()`, loop de sourcing `for lib in "$(dirname "${BASH_SOURCE[0]}")/lib/"*.sh`, `cleanup()` con idempotencia, `trap 'cleanup $? EXIT INT TERM'`, orquestación `main()`, `main "$@"`
+- [ ] 3.2 Eliminar script monolítico original `init-project.sh` (ahora reemplazado por directorio)
 
-## Phase 4: Verification
+## Fase 4: Verificación
 
-- [ ] 4.1 Syntax check entry point: `bash -n init-project/init-project.sh` → exit 0
-- [ ] 4.2 Syntax check all modules: `bash -n init-project/lib/*.sh` → all exit 0
-- [ ] 4.3 Verify 44 functions available: `bash -c 'source init-project/init-project.sh; compgen -A function | wc -l'` → >= 44
-- [ ] 4.4 Verify sourcing order (5 source calls): `bash -x init-project/init-project.sh -c 'type log; type check_dependencies; type select_project_name' 2>&1 | grep -c 'source'` → 5
-- [ ] 4.5 Verify global variables in entry point: `grep -E '^(RED|GREEN|SELECTED_PKG_MANAGER|PROJECT_TYPE)' init-project/init-project.sh`
-- [ ] 4.6 Verify cleanup trap: `grep "trap 'cleanup" init-project/init-project.sh`
-- [ ] 4.7 Verify modules in correct directory: `ls init-project/lib/` → 5 .sh files
-- [ ] 4.8 Test curl compatibility: `curl -fsSL "file://$(pwd)/init-project/init-project.sh" | bash -c 'type main'`
+- [ ] 4.1 Check de sintaxis punto de entrada: `bash -n init-project/init-project.sh` → exit 0
+- [ ] 4.2 Check de sintaxis todos los módulos: `bash -n init-project/lib/*.sh` → todos exit 0
+- [ ] 4.3 Verificar 44 funciones disponibles: `bash -c 'source init-project/init-project.sh; compgen -A function | wc -l'` → >= 44
+- [ ] 4.4 Verificar orden de sourcing (5 source calls): `bash -x init-project/init-project.sh -c 'type log; type check_dependencies; type select_project_name' 2>&1 | grep -c 'source'` → 5
+- [ ] 4.5 Verificar variables globales en punto de entrada: `grep -E '^(RED|GREEN|SELECTED_PKG_MANAGER|PROJECT_TYPE)' init-project/init-project.sh`
+- [ ] 4.6 Verificar cleanup trap: `grep "trap 'cleanup" init-project/init-project.sh`
+- [ ] 4.7 Verificar módulos en directorio correcto: `ls init-project/lib/` → 5 archivos .sh
+- [ ] 4.8 Test compatibilidad curl: `curl -fsSL "file://$(pwd)/init-project/init-project.sh" | bash -c 'type main'`
 
-## Commit Strategy (One Module Per Commit)
+## Estrategia de Commits (Un Módulo Por Commit)
 
-| Task | File | Commit Message |
-|------|------|----------------|
+| Tarea | Archivo | Mensaje de Commit |
+|--------|---------|------------------|
 | 1.2 | - | `chore: backup monolithic init-project.sh before modular refactor` |
 | 2.1 | lib/core.sh | `feat(init-project): extract core module (logging, colors, timeout)` |
 | 2.2 | lib/validators.sh | `feat(init-project): extract validators module (deps, docker checks)` |
@@ -42,15 +42,15 @@
 | 3.1 | init-project.sh | `feat(init-project): create modular entry point (~150 lines)` |
 | 3.2 | init-project.sh | `chore(init-project): remove monolithic script (replaced by modular)` |
 
-## Dependencies
+## Dependencias
 
 ```
-core.sh (no deps)
+core.sh (sin deps)
 validators.sh → core.sh
 selectors.sh → core.sh + validators.sh
 builders.sh → core.sh + validators.sh
 setup.sh → core.sh
-init-project.sh → all modules
+init-project.sh → todos los módulos
 ```
 
-Implementation must proceed in order: 1 → 2.1 → 2.2 → 2.3 → 2.4 → 2.5 → 3.1 → 3.2 → 4.*
+La implementación debe proceder en orden: 1 → 2.1 → 2.2 → 2.3 → 2.4 → 2.5 → 3.1 → 3.2 → 4.*

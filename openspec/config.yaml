@@ -2,30 +2,30 @@
 schema: spec-driven
 
 context: |
-  Tech stack: Shell/Bash CLI (bash 3.2+ scripts)
-  Architecture: Project scaffolding tool (Modular/Hexagonal patterns for generated projects)
-  Testing: Shell scripts - bash -n syntax validation
-  Style: POSIX-compliant bash, ANSI colors, portable sed/timeout
+  Tech stack: CLI Shell/Bash (scripts bash 3.2+)
+  Architecture: Herramienta de scaffolding (patrones Modular/Hexagonal para proyectos generados)
+  Testing: Shell scripts - validación de sintaxis con bash -n
+  Style: Bash compatible con POSIX, colores ANSI, sed/timeout portable
 
 rules:
   proposal:
-    - Include rollback plan for risky changes
-    - Identify affected scripts/modules
+    - Incluir plan de rollback para cambios riesgosos
+    - Identificar scripts/modules afectados
   specs:
-    - Use Given/When/Then format for scenarios
-    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - Usar formato Given/When/Then para escenarios
+    - Usar palabras clave RFC 2119 (MUST, SHALL, SHOULD, MAY)
   design:
-    - Include sequence diagrams for complex flows
-    - Document architecture decisions with rationale
+    - Incluir diagramas de secuencia para flujos complejos
+    - Documentar decisiones de arquitectura con justificación
   tasks:
-    - Group tasks by phase (infrastructure, implementation, testing)
-    - Use hierarchical numbering (1.1, 1.2, etc.)
-    - Keep tasks small enough to complete in one session
+    - Agrupar tareas por fase (infraestructura, implementación, testing)
+    - Usar numeración jerárquica (1.1, 1.2, etc.)
+    - Mantener tareas lo suficientemente pequeñas para completar en una sesión
   apply:
-    - Follow existing code patterns and conventions
-    - Use bash -n to validate syntax before commits
+    - Seguir patrones y convenciones de código existentes
+    - Usar bash -n para validar sintaxis antes de commits
   verify:
-    - Run bash -n on modified scripts
-    - Compare implementation against every spec scenario
+    - Ejecutar bash -n en scripts modificados
+    - Comparar implementación contra cada escenario de especificación
   archive:
-    - Warn before merging destructive deltas (large removals)
+    - Advertir antes de merging deltas destructivas (grandes eliminaciones)

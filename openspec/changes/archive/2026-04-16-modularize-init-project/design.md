@@ -1,120 +1,120 @@
-# Design: Modularize init-project.sh
+# Diseño: Modularizar init-project.sh
 
-## Technical Approach
+## Enfoque Técnico
 
-Transform the monolithic 2836-line `init-project.sh` into a modular directory structure under `init-project/` with clear separation of concerns. The entry point (`init-project.sh`) will source modules via a glob loop, declare globals, and delegate all function definitions to module files. This enables per-module testing and improved maintainability while preserving 100% backward compatibility.
+Transformar el script monolítico de 2836 líneas `init-project.sh` en una estructura de directorio modular bajo `init-project/` con clara separación de responsabilidades. El punto de entrada (`init-project.sh`) hará source de módulos via un loop glob, declarará globals, y delegará todas las definiciones de funciones a archivos de módulo. Esto habilita testing por módulo y mejor mantenibilidad mientras preserva 100% compatibilidad hacia atrás.
 
-## Architecture Decisions
+## Decisiones de Arquitectura
 
-### Decision: Sourcing Mechanism — Loop vs Explicit
+### Decisión: Mecanismo de Sourcing — Loop vs Explícito
 
-**Choice**: Use `for lib in "$(dirname "${BASH_SOURCE[0]}")/lib/*.sh"; do source "$lib"; done`
+**Elección**: Usar `for lib in "$(dirname "${BASH_SOURCE[0]}")/lib/*.sh"; do source "$lib"; done`
 
-**Alternatives considered**:
-- Explicit `source lib/core.sh; source lib/validators.sh; ...` — explicit ordering but requires manual maintenance
-- Dynamic `find` with sorting — more complex, less portable
+**Alternativas consideradas**:
+- `source lib/core.sh; source lib/validators.sh; ...` — orden explícito pero requiere mantenimiento manual
+- `find` dinámico con sorting — más complejo, menos portable
 
-**Rationale**: The spec mandates this exact syntax. The loop approach is concise and automatically picks up new modules, while the spec's exact ordering constraint ensures dependencies resolve correctly regardless of alphabetical sort.
+**Justificación**: El spec mandates esta sintaxis exacta. El enfoque de loop es conciso y automáticamente picking up nuevos módulos, mientras que la restricción de orden exacto del spec asegura que las dependencias se resuelvan correctamente sin importar el orden alfabético.
 
-### Decision: Variable Scope Strategy
+### Decisión: Estrategia de Scope de Variables
 
-**Choice**: 
-- **Global (declared in entry point)**: Color constants, state variables (`SELECTED_PKG_MANAGER`, `PROJECT_TYPE`, `BACKEND_TYPE`, `ARCHITECTURE`, `DOCKER_DB_TYPE`, `DOCKER_AVAILABLE`, `ORIGINAL_DIR`, `PROJECT_CREATED`, `CLEANUP_DONE`)
-- **Global (set by modules)**: All `select_*` and `check_*` functions set their respective variables directly in global scope
-- **Local (within functions)**: Loop variables, temporary strings, command outputs use `local`
+**Elección**:
+- **Global (declaradas en entry point)**: Constantes de color, variables de estado (`SELECTED_PKG_MANAGER`, `PROJECT_TYPE`, `BACKEND_TYPE`, `ARCHITECTURE`, `DOCKER_DB_TYPE`, `DOCKER_AVAILABLE`, `ORIGINAL_DIR`, `PROJECT_CREATED`, `CLEANUP_DONE`)
+- **Global (setadas por módulos)**: Todas las funciones `select_*` y `check_*` setean sus variables respectivas directamente en scope global
+- **Local (dentro de funciones)**: Variables de loop, strings temporales, outputs de comandos usan `local`
 
-**Alternatives considered**:
-- Pass all values via return/exit codes — bash limitation makes this cumbersome
-- Export to environment — risk of pollution
+**Alternativas consideradas**:
+- Pasar todos los valores via return/exit codes — limitación de bash hace esto engorroso
+- Exportar a environment — riesgo de contaminación
 
-**Rationale**: Bash doesn't support passing by reference or closures. Global variables are the standard pattern in bash scripts. Modules set module-specific globals; entry point owns shared state.
+**Justificación**: Bash no soporta pasar por referencia o closures. Variables globales son el patrón estándar en scripts bash. Módulos setean globals específicos del módulo; entry point posee estado compartido.
 
-### Decision: Error Propagation
+### Decisión: Propagación de Errores
 
-**Choice**: `set -e` at entry point with trap `cleanup $? EXIT INT TERM`
+**Elección**: `set -e` en entry point con trap `cleanup $? EXIT INT TERM`
 
-**Alternatives considered**:
-- Per-module error handling — inconsistent, verbose
-- No `set -e` — silent failures become bugs
+**Alternativas consideradas**:
+- Manejo de errores por módulo — inconsistente, verboso
+- Sin `set -e` — fallas silenciosas se vuelven bugs
 
-**Rationale**: Spec mandates this exact pattern. `set -e` causes any command failure to exit immediately. The trap catches EXIT (normal or error), INT (Ctrl+C), TERM (kill). `cleanup` uses `CLEANUP_DONE` flag for idempotency.
+**Justificación**: Spec mandates este patrón exacto. `set -e` causa que cualquier falla de comando salga inmediatamente. El trap catches EXIT (normal o error), INT (Ctrl+C), TERM (kill). `cleanup` usa flag `CLEANUP_DONE` para idempotencia.
 
-## File Structure
+## Estructura de Archivos
 
 ```
 init-project/
-├── init-project.sh     (~150 lines, entry point)
+├── init-project.sh     (~150 líneas, punto de entrada)
 └── lib/
-    ├── core.sh         (~100 lines, 8 functions)
-    ├── validators.sh   (~80 lines, 2 functions)
-    ├── selectors.sh    (~350 lines, 9 functions)
-    ├── builders.sh     (~600 lines, 5 functions)
-    └── setup.sh        (~750 lines, 16 functions)
+    ├── core.sh         (~100 líneas, 8 funciones)
+    ├── validators.sh   (~80 líneas, 2 funciones)
+    ├── selectors.sh    (~350 líneas, 9 funciones)
+    ├── builders.sh     (~600 líneas, 5 funciones)
+    └── setup.sh       (~750 líneas, 16 funciones)
 ```
 
-## Module Dependencies
+## Dependencias de Módulos
 
 ```
-init-project.sh (entry point)
-  └─ sources lib/*.sh in order: core → validators → selectors → builders → setup
+init-project.sh (punto de entrada)
+  └─ hace source lib/*.sh en orden: core → validators → selectors → builders → setup
 
-core.sh (no deps)
+core.sh (sin deps)
   └─ log, log_info, log_success, log_warn, log_error, print_banner, cleanup, run_with_timeout
 
-validators.sh (depends on core)
+validators.sh (depende de core)
   └─ check_dependencies, check_docker
 
-selectors.sh (depends on core, validators)
+selectors.sh (depende de core, validators)
   └─ select_project_name, select_package_manager, select_project_type, select_backend_type, 
      select_architecture, select_agent, select_graphify, select_docker_db, confirm_setup
 
-builders.sh (depends on core, validators)
+builders.sh (depende de core, validators)
   └─ create_frontend_next, create_frontend_vite, create_backend_nestjs, 
      create_backend_golang, create_monorepo
 
-setup.sh (depends on core)
+setup.sh (depende de core)
   └─ setup_github_actions, setup_env_template, setup_vscode, setup_agents_md,
      setup_agent_rules, setup_skills, setup_husky, setup_scripts, setup_vitest,
      enrich_gitignore, setup_git_workflow, setup_git_initial, setup_graphify,
      setup_gga, setup_docker_db
 ```
 
-## Implementation Approach
+## Enfoque de Implementación
 
-### Step 1: Create directory structure
+### Paso 1: Crear estructura de directorio
 
 ```bash
 mkdir -p init-project/lib
 ```
 
-### Step 2: Create core.sh (lines 10-98, 509-545 from original)
+### Paso 2: Crear core.sh (líneas 10-98, 509-545 del original)
 
-Extract: color constants, `log` family functions, `print_banner`, `run_with_timeout`. Core has no dependencies.
+Extraer: constantes de color, funciones familia `log`, `print_banner`, `run_with_timeout`. Core no tiene dependencias.
 
-### Step 3: Create validators.sh (lines 434-503 from original)
+### Paso 3: Crear validators.sh (líneas 434-503 del original)
 
-Extract: `check_dependencies`, `check_docker`. Depends on core.sh logging.
+Extraer: `check_dependencies`, `check_docker`. Depende de core.sh para logging.
 
-### Step 4: Create selectors.sh (lines 101-428 from original)
+### Paso 4: Crear selectors.sh (líneas 101-428 del original)
 
-Extract: all `select_*` functions and `confirm_setup`. Depends on validators for `check_docker` called in `select_docker_db`.
+Extraer: todas las funciones `select_*` y `confirm_setup`. Depende de validators para `check_docker` llamado en `select_docker_db`.
 
-### Step 5: Create builders.sh (lines 551-1121 from original)
+### Paso 5: Crear builders.sh (líneas 551-1121 del original)
 
-Extract: all `create_*` functions. Depends on core for logging and `run_with_timeout`, validators for `check_dependencies` (called inside builders via `set -e` on dependency check).
+Extraer: todas las funciones `create_*`. Depende de core para logging y `run_with_timeout`, validators para `check_dependencies` (llamado dentro de builders via `set -e` en dependency check).
 
-### Step 6: Create setup.sh (lines 1127-2360 from original)
+### Paso 6: Crear setup.sh (líneas 1127-2360 del original)
 
-Extract: all `setup_*` and `enrich_gitignore`. Depends only on core.
+Extraer: todas las funciones `setup_*` y `enrich_gitignore`. Solo depende de core.
 
-### Step 7: Create entry point (~150 lines)
+### Paso 7: Crear punto de entrada (~150 líneas)
 
 ```bash
 #!/usr/bin/env bash
 
 set -e
 
-# === COLORS ===
+# === COLORES ===
 RED=$'\033[0;31m'
 GREEN=$'\033[0;32m'
 YELLOW=$'\033[0;33m'
@@ -125,7 +125,7 @@ BOLD=$'\033[1m'
 DIM=$'\033[2m'
 NC=$'\033[0m'
 
-# === STATE VARIABLES ===
+# === VARIABLES DE ESTADO ===
 SELECTED_PKG_MANAGER=""
 PROJECT_TYPE=""
 BACKEND_TYPE=""
@@ -138,14 +138,14 @@ ORIGINAL_DIR=$(pwd)
 PROJECT_CREATED=0
 CLEANUP_DONE=0
 
-# === CLEANUP TRAP ===
+# === TRAP DE CLEANUP ===
 cleanup() {
     local exit_code=${1:-0}
     if [ "$CLEANUP_DONE" -eq 1 ]; then
         return
     fi
     CLEANUP_DONE=1
-    # ... (moved from core.sh)
+    # ... (movido de core.sh)
 }
 
 trap 'cleanup $? EXIT INT TERM'
@@ -156,41 +156,41 @@ slugify() {
     echo "$input" | sed -E 's/[^a-zA-Z0-9]+/-/g' | tr '[:upper:]' '[:lower:]'
 }
 
-# === SOURCE MODULES ===
+# === SOURCE DE MÓDULOS ===
 for lib in "$(dirname "${BASH_SOURCE[0]}")/lib/"*.sh; do
     source "$lib"
 done
 
 # === MAIN ===
 main() {
-    # ... (orchestrates all module functions)
+    # ... (orquesta todas las funciones de módulos)
 }
 
 main "$@"
 ```
 
-## Error Handling Strategy
+## Estrategia de Manejo de Errores
 
-1. **Entry point**: `set -e` causes immediate exit on any command failure
-2. **Cleanup trap**: `trap 'cleanup $? EXIT INT TERM'` ensures partial projects are removed on error
-3. **Module-level**: Functions `log_error` write to stderr; callers use `exit 1` for failures
-4. **Idempotency**: `cleanup` uses `CLEANUP_DONE` flag to prevent double execution
-5. **Timeout handling**: `run_with_timeout` falls back through `timeout` → `gtimeout` → `perl` → direct execution
+1. **Entry point**: `set -e` causa salida inmediata en cualquier falla de comando
+2. **Cleanup trap**: `trap 'cleanup $? EXIT INT TERM'` asegura que proyectos parciales sean removidos en error
+3. **Nivel módulo**: Funciones `log_error` escriben a stderr; llamadores usan `exit 1` para fallas
+4. **Idempotencia**: `cleanup` usa flag `CLEANUP_DONE` para prevenir doble ejecución
+5. **Manejo de timeout**: `run_with_timeout` cae a través de `timeout` → `gtimeout` → `perl` → ejecución directa
 
-## Rollback Plan
+## Plan de Rollback
 
-### Git-based rollback (if refactor breaks):
+### Rollback basado en Git (si refactor rompe):
 
 ```bash
-# Option 1: Restore monolithic script
+# Opción 1: Restaurar script monolítico
 git checkout HEAD -- init-project.sh
 rm -rf init-project/
 
-# Option 2: Rollback to modular (keep structure, fix modules)
+# Opción 2: Rollback a modular (mantener estructura, fix módulos)
 git checkout HEAD -- init-project/
 ```
 
-### Pre-refactor backup (recommended before implementing):
+### Backup pre-refactor (recomendado antes de implementar):
 
 ```bash
 git add init-project.sh
@@ -198,26 +198,26 @@ git commit -m "chore: backup monolithic before modular refactor"
 git tag backup/monolithic-pre-refactor
 ```
 
-## Sourcing Order Verification
+## Verificación de Orden de Sourcing
 
-After implementation, verify with:
+Después de implementar, verificar con:
 ```bash
 bash -x init-project/init-project.sh -c 'type log; type check_dependencies; type select_project_name' 2>&1 | grep -c 'source'
 ```
 
-Expected: 5 `source` invocations (one per module).
+Esperado: 5 invocaciones de `source` (una por módulo).
 
-## Backward Compatibility Verification
+## Verificación de Compatibilidad hacia Atrás
 
 ```bash
-# Test curl-based install still works
+# Test instalación via curl todavía funciona
 curl -fsSL "file://$(pwd)/init-project/init-project.sh" | bash -c 'type main'
 
-# Verify all 44 functions exist
+# Verificar que las 44 funciones existen
 bash -c 'source init-project/init-project.sh; compgen -A function | wc -l'
-# Expected: >= 44
+# Esperado: >= 44
 ```
 
-## Open Questions
+## Preguntas Abiertas
 
-None — spec provides complete requirements. Implementation can proceed directly.
+Ninguna — el spec proporciona requisitos completos. La implementación puede proceder directamente.

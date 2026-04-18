@@ -1,55 +1,55 @@
-# Design: Docker Redis + Admin GUIs
+# Diseño: Docker Redis + Admin GUIs
 
-## Technical Approach
+## Enfoque Técnico
 
 Extender el sistema Docker DB existente para agregar Redis como base de datos y visualizadores web (Admin GUIs) para todas las bases de datos. La implementación reutiliza patrones existentes del código de PostgreSQL y MongoDB.
 
-## Architecture Decisions
+## Decisiones de Arquitectura
 
-### Decision: DOCKER_DB_TYPE Enum vs Flags
+### Decisión: Enum DOCKER_DB_TYPE vs Flags
 
-**Choice**: Enum expandido con valores predefinidos
+**Elección**: Enum expandido con valores predefinidos
 
 ```
 DOCKER_DB_TYPE = postgres | mongodb | redis | postgres-redis | mongodb-redis | all | both | none
 ```
 
-**Alternatives considered**:
+**Alternativas consideradas**:
 - Flags booleanos: `DOCKER_POSTGRES=1 DOCKER_REDIS=1` — más flexible pero más variables
-- Array: `DOCKER_SERVICES=(postgres redis)` — máximo flexibility, máxima complejidad
+- Array: `DOCKER_SERVICES=(postgres redis)` — máxima flexibilidad, máxima complejidad
 
-**Rationale**: El enum predefinido es simple de entender y mantener. Las combinaciones comunes (postgres-redis, all) evitan selección repetitiva. Bash string comparison es trivial vs parsing arrays.
+**Justificación**: El enum predefinido es simple de entender y mantener. Las combinaciones comunes (postgres-redis, all) evitan selección repetitiva. Comparación de strings bash es trivial vs parsing de arrays.
 
-### Decision: Admin GUIs como Servicios Independientes
+### Decisión: Admin GUIs como Servicios Independientes
 
-**Choice**: Cada Admin GUI es un servicio separado en docker-compose
+**Elección**: Cada Admin GUI es un servicio separado en docker-compose
 
-**Alternatives considered**:
+**Alternativas consideradas**:
 - Contenedor único con todos los admins — conflicto de puertos, acoplamiento
 - Scripts externos que ejecutan Adminer local — requiere Adminer instalado
 
-**Rationale**: Servicios independientes permiten:
+**Justificación**: Servicios independientes permiten:
 - Auto-start selectivo según bases de datos elegidas
 - Healthchecks individuales
 - Escalado independiente
 - Limpieza fácil con `docker compose down`
 
-### Decision: Imágenes Oficiales para Admin GUIs
+### Decisión: Imágenes Oficiales para Admin GUIs
 
 | Admin | Imagen | Justificación |
-|-------|--------|---------------|
+|-------|--------|--------------|
 | PostgreSQL | `adminer:latest` | Ligero, single PHP file, soporta PostgreSQL |
-| MongoDB | `mongo-express:latest` | Official web admin para MongoDB |
+| MongoDB | `mongo-express:latest` | Web admin oficial para MongoDB |
 | Redis | `rediscommander/redis-commander:latest` | Mejor opción open source para Redis |
 
-**Rationale**: Imágenes oficiales/maintained evitan custom Dockerfiles. Adminer es stateless, Mongo Express y Redis Commander tienen configuración mínima.
+**Justificación**: Imágenes oficiales/maintained evitan custom Dockerfiles. Adminer es stateless, Mongo Express y Redis Commander tienen configuración mínima.
 
-### Decision: Puertos Consecutivos para Admin GUIs
+### Decisión: Puertos Consecutivos para Admin GUIs
 
-**Choice**: 8080, 8081, 8082
+**Elección**: 8080, 8081, 8082
 
 | Puerto | Servicio | Base de datos |
-|--------|----------|---------------|
+|--------|----------|--------------|
 | 5432 | postgres | PostgreSQL |
 | 27017 | mongodb | MongoDB |
 | 6379 | redis | Redis |
@@ -57,9 +57,9 @@ DOCKER_DB_TYPE = postgres | mongodb | redis | postgres-redis | mongodb-redis | a
 | 8081 | mongo-express | MongoDB admin |
 | 8082 | redis-commander | Redis admin |
 
-**Rationale**: Puertos 808x son convención para admin interfaces (8080 = first web admin). Sequencial facilita memorización.
+**Justificación**: Puertos 808x son convención para admin interfaces (8080 = first web admin). Secuencial facilita memorización.
 
-## File Changes
+## Cambios de Archivos
 
 ### lib/selectors.sh
 
@@ -109,7 +109,7 @@ if [ "$DOCKER_DB_TYPE" = "redis" ] || [ "$DOCKER_DB_TYPE" = "postgres-redis" ] |
 fi
 ```
 
-## Docker Compose Structure
+## Estructura Docker Compose
 
 ```yaml
 services:
@@ -167,7 +167,7 @@ volumes:
   redis_data:                    # NUEVO
 ```
 
-## Environment Variables
+## Variables de Entorno
 
 ```env
 # Docker PostgreSQL
@@ -180,7 +180,7 @@ DATABASE_URL="postgresql://saiuser:saipass@localhost:5432/saidb"
 REDIS_URL="redis://default:redis123@localhost:6379"
 ```
 
-## Sequence Diagram: Auto-Start
+## Diagrama de Secuencia: Auto-Start
 
 ```
 User runs init-project.sh
@@ -213,9 +213,9 @@ db-start.sh shows:
   - Admin URLs (8080, 8081, 8082)
 ```
 
-## Backward Compatibility
+## Compatibilidad hacia Atrás
 
-### 'both' Legacy Support
+### Soporte Legacy 'both'
 
 ```bash
 # anterior: both = postgres + mongodb
@@ -226,7 +226,7 @@ if [ "$DOCKER_DB_TYPE" = "both" ]; then
 fi
 ```
 
-### Conditional Logic Pattern
+### Patrón de Lógica Condicional
 
 ```bash
 # PostgreSQL
@@ -240,14 +240,14 @@ fi
 
 Este patrón permite agregar nuevas combinaciones sin modificar lógica existente.
 
-## Error Handling
+## Manejo de Errores
 
 1. **Docker unavailable**: Solo mostrar opción "No incluir Docker"
 2. **Port conflict**: Docker compose falla con error claro
 3. **Image pull failure**: Docker intenta pull, error visible
 4. **Healthcheck failure**: `docker compose ps` muestra estado unhealthy
 
-## Rollback Plan
+## Plan de Rollback
 
 ```bash
 # Opción 1: Revert commits
@@ -260,7 +260,7 @@ git checkout HEAD~2 -- init-project/lib/setup.sh
 git checkout HEAD~2 -- README.md
 ```
 
-## Verification Commands
+## Comandos de Verificación
 
 ```bash
 # Ver servicios generados
