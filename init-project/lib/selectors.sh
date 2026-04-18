@@ -264,7 +264,7 @@ select_docker_db() {
     log "${BOLD}${CYAN}  ▸ Paso 8 de 9 ─── Docker Database (opcional)${NC}"
     log "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-    log "${DIM}Contenedores Docker con PostgreSQL y/o MongoDB con persistencia${NC}"
+    log "${DIM}Contenedores Docker con bases de datos para desarrollo local${NC}"
     echo ""
     
     # Verificar Docker primero
@@ -290,11 +290,20 @@ select_docker_db() {
     log "${WHITE}  ▸${NC}  ${BOLD}2${NC}) ${CYAN}MongoDB${NC} (NoSQL)"
     log "${DIM}        Document DB, MongoDB 7.0${NC}"
     echo ""
-    log "${WHITE}  ▸${NC}  ${BOLD}3${NC}) ${MAGENTA}Ambas${NC} (PostgreSQL + MongoDB)"
-    log "${DIM}        Ambientes SQL + NoSQL${NC}"
+    log "${WHITE}  ▸${NC}  ${BOLD}3${NC}) ${YELLOW}Redis${NC} (Time Series / Cache / Real-time)"
+    log "${DIM}        In-memory data store, Redis 7.2${NC}"
     echo ""
-    log "${WHITE}  ▸${NC}  ${BOLD}4${NC}) ${RED}No incluir Docker${NC}"
-    log "${DIM}        Usar base de datos externa${NC}"
+    log "${WHITE}  ▸${NC}  ${BOLD}4${NC}) ${MAGENTA}PostgreSQL + Redis${NC}"
+    log "${DIM}        SQL DB + Cache/Real-time${NC}"
+    echo ""
+    log "${WHITE}  ▸${NC}  ${BOLD}5${NC}) ${MAGENTA}MongoDB + Redis${NC}"
+    log "${DIM}        NoSQL DB + Cache/Real-time${NC}"
+    echo ""
+    log "${WHITE}  ▸${NC}  ${BOLD}6${NC}) ${MAGENTA}Todas${NC} (PostgreSQL + MongoDB + Redis)"
+    log "${DIM}        Ambiente completo de desarrollo${NC}"
+    echo ""
+    log "${WHITE}  ▸${NC}  ${BOLD}7${NC}) ${RED}No incluir Docker${NC}"
+    log "${DIM}        Usar bases de datos externas${NC}"
     echo ""
     read -r -t 120 -p "   └─►  " DB_CHOICE
     echo ""
@@ -302,8 +311,11 @@ select_docker_db() {
     case "$DB_CHOICE" in
         1) DOCKER_DB_TYPE="postgres" ;;
         2) DOCKER_DB_TYPE="mongodb" ;;
-        3) DOCKER_DB_TYPE="both" ;;
-        4) DOCKER_DB_TYPE="none" ;;
+        3) DOCKER_DB_TYPE="redis" ;;
+        4) DOCKER_DB_TYPE="postgres-redis" ;;
+        5) DOCKER_DB_TYPE="mongodb-redis" ;;
+        6) DOCKER_DB_TYPE="all" ;;
+        7) DOCKER_DB_TYPE="none" ;;
         *) DOCKER_DB_TYPE="none" ;;
     esac
     
@@ -314,8 +326,17 @@ select_docker_db() {
         mongodb)
             log "${GREEN}  ✓${NC} Docker Database: ${CYAN}MongoDB${NC}"
             ;;
-        both)
-            log "${GREEN}  ✓${NC} Docker Database: ${MAGENTA}PostgreSQL + MongoDB${NC}"
+        redis)
+            log "${GREEN}  ✓${NC} Docker Database: ${YELLOW}Redis${NC}"
+            ;;
+        postgres-redis)
+            log "${GREEN}  ✓${NC} Docker Database: ${GREEN}PostgreSQL${NC} + ${YELLOW}Redis${NC}"
+            ;;
+        mongodb-redis)
+            log "${GREEN}  ✓${NC} Docker Database: ${CYAN}MongoDB${NC} + ${YELLOW}Redis${NC}"
+            ;;
+        all)
+            log "${GREEN}  ✓${NC} Docker Database: ${GREEN}PostgreSQL${NC} + ${CYAN}MongoDB${NC} + ${YELLOW}Redis${NC}"
             ;;
         none)
             log "${DIM}  ○${NC} Docker Database: omitido${NC}"
@@ -353,6 +374,18 @@ confirm_setup() {
             ;;
         mongodb)
             log "${WHITE}  ▸${NC}  ${BOLD}Docker DB:${NC}     ${CYAN}MongoDB${NC}"
+            ;;
+        redis)
+            log "${WHITE}  ▸${NC}  ${BOLD}Docker DB:${NC}     ${YELLOW}Redis${NC}"
+            ;;
+        postgres-redis)
+            log "${WHITE}  ▸${NC}  ${BOLD}Docker DB:${NC}     ${GREEN}PostgreSQL${NC} + ${YELLOW}Redis${NC}"
+            ;;
+        mongodb-redis)
+            log "${WHITE}  ▸${NC}  ${BOLD}Docker DB:${NC}     ${CYAN}MongoDB${NC} + ${YELLOW}Redis${NC}"
+            ;;
+        all)
+            log "${WHITE}  ▸${NC}  ${BOLD}Docker DB:${NC}     ${GREEN}PostgreSQL${NC} + ${CYAN}MongoDB${NC} + ${YELLOW}Redis${NC}"
             ;;
         both)
             log "${WHITE}  ▸${NC}  ${BOLD}Docker DB:${NC}     ${MAGENTA}PostgreSQL + MongoDB${NC}"

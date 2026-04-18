@@ -122,11 +122,14 @@ main() {
                 log_success "Contenedores Docker iniciados"
                 echo ""
                 log "${CYAN}Connection strings:${NC}"
-                if [ "$DOCKER_DB_TYPE" = "postgres" ] || [ "$DOCKER_DB_TYPE" = "both" ]; then
+                if [ "$DOCKER_DB_TYPE" = "postgres" ] || [ "$DOCKER_DB_TYPE" = "postgres-redis" ] || [ "$DOCKER_DB_TYPE" = "all" ] || [ "$DOCKER_DB_TYPE" = "both" ]; then
                     echo "  ${GREEN}PostgreSQL:${NC}  postgresql://saiuser:saipass@localhost:5432/saidb"
                 fi
-                if [ "$DOCKER_DB_TYPE" = "mongodb" ] || [ "$DOCKER_DB_TYPE" = "both" ]; then
+                if [ "$DOCKER_DB_TYPE" = "mongodb" ] || [ "$DOCKER_DB_TYPE" = "mongodb-redis" ] || [ "$DOCKER_DB_TYPE" = "all" ] || [ "$DOCKER_DB_TYPE" = "both" ]; then
                     echo "  ${CYAN}MongoDB:${NC}     mongodb://saiuser:saipass@localhost:27017/sai"
+                fi
+                if [ "$DOCKER_DB_TYPE" = "redis" ] || [ "$DOCKER_DB_TYPE" = "postgres-redis" ] || [ "$DOCKER_DB_TYPE" = "mongodb-redis" ] || [ "$DOCKER_DB_TYPE" = "all" ]; then
+                    echo "  ${YELLOW}Redis:${NC}       redis://default:redis123@localhost:6379"
                 fi
                 echo ""
             else

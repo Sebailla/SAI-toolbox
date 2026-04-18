@@ -84,8 +84,11 @@ El CLI puede generar contenedores Docker con bases de datos para desarrollo loca
 ```
   ▸ 1) PostgreSQL (SQL - ideal para Prisma)
   ▸ 2) MongoDB (NoSQL)
-  ▸ 3) Ambas (PostgreSQL + MongoDB)
-  ▸ 4) No incluir Docker
+  ▸ 3) Redis (Time Series / Cache / Real-time)
+  ▸ 4) PostgreSQL + Redis
+  ▸ 5) MongoDB + Redis
+  ▸ 6) Todas (PostgreSQL + MongoDB + Redis)
+  ▸ 7) No incluir Docker
 ```
 
 ### Auto-inicio
@@ -112,6 +115,7 @@ Si Docker no está corriendo, te avisa y te dice cómo iniciarlos después.
 Los datos persisten en volúmenes Docker:
 - `postgres_data` → datos PostgreSQL
 - `mongodb_data` + `mongodb_config` → datos MongoDB
+- `redis_data` → datos Redis
 
 ### Connection strings
 
@@ -121,6 +125,9 @@ postgresql://saiuser:saipass@localhost:5432/saidb
 
 # MongoDB
 mongodb://saiuser:saipass@localhost:27017/sai
+
+# Redis
+redis://default:redis123@localhost:6379
 ```
 
 ---

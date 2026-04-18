@@ -1318,7 +1318,7 @@ EOF
     local db_name="saidb"
     
     # PostgreSQL
-    if [ "$DOCKER_DB_TYPE" = "postgres" ] || [ "$DOCKER_DB_TYPE" = "both" ]; then
+    if [ "$DOCKER_DB_TYPE" = "postgres" ] || [ "$DOCKER_DB_TYPE" = "postgres-redis" ] || [ "$DOCKER_DB_TYPE" = "all" ]; then
         cat >> docker-compose.yml <<'EOF'
 
   postgres:
@@ -1344,7 +1344,7 @@ EOF
     fi
     
     # MongoDB
-    if [ "$DOCKER_DB_TYPE" = "mongodb" ] || [ "$DOCKER_DB_TYPE" = "both" ]; then
+    if [ "$DOCKER_DB_TYPE" = "mongodb" ] || [ "$DOCKER_DB_TYPE" = "mongodb-redis" ] || [ "$DOCKER_DB_TYPE" = "all" ]; then
         cat >> docker-compose.yml <<'EOF'
 
   mongodb:
@@ -1370,6 +1370,29 @@ EOF
         log_success "MongoDB configurado en puerto 27017"
     fi
     
+    # Redis
+    if [ "$DOCKER_DB_TYPE" = "redis" ] || [ "$DOCKER_DB_TYPE" = "postgres-redis" ] || [ "$DOCKER_DB_TYPE" = "mongodb-redis" ] || [ "$DOCKER_DB_TYPE" = "all" ]; then
+        cat >> docker-compose.yml <<'EOF'
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: sai_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+EOF
+        log_success "Redis configurado en puerto 6379"
+    fi
+    
     # Volumes al final del archivo
     cat >> docker-compose.yml <<'EOF'
 
@@ -1379,6 +1402,8 @@ volumes:
   mongodb_data:
     driver: local
   mongodb_config:
+    driver: local
+  redis_data:
     driver: local
 EOF
 
@@ -1452,6 +1477,13 @@ fi
 if docker compose ps mongodb &>/dev/null; then
     printf '%b\n' "  ${CYAN}MongoDB:${NC}"
     printf '%s\n' "    mongodb://saiuser:saipass@localhost:27017/sai"
+    echo ""
+fi
+
+# Redis connection string
+if docker compose ps redis &>/dev/null; then
+    printf '%b\n' "  ${YELLOW}Redis:${NC}"
+    printf '%s\n' "    redis://default:redis123@localhost:6379"
     echo ""
 fi
 
@@ -1589,24 +1621,67 @@ EOF
     chmod +x scripts/db-logs.sh
 
     # Actualizar .env.template con las URLs correctas según la elección
-    if [ "$DOCKER_DB_TYPE" = "postgres" ]; then
-        cat >> .env <<'EOF'
+    case "$DOCKER_DB_TYPE" in
+        postgres)
+            cat >> .env <<'EOF'
 
 # ============================================================
 # Docker PostgreSQL
 # ============================================================
 # PostgreSQL: postgresql://saiuser:saipass@localhost:5432/saidb
 EOF
-    elif [ "$DOCKER_DB_TYPE" = "mongodb" ]; then
-        cat >> .env <<'EOF'
+            ;;
+        mongodb)
+            cat >> .env <<'EOF'
 
 # ============================================================
 # Docker MongoDB
 # ============================================================
 # MongoDB: mongodb://saiuser:saipass@localhost:27017/sai
 EOF
-    elif [ "$DOCKER_DB_TYPE" = "both" ]; then
-        cat >> .env <<'EOF'
+            ;;
+        redis)
+            cat >> .env <<'EOF'
+
+# ============================================================
+# Docker Redis
+# ============================================================
+# Redis: redis://default:redis123@localhost:6379
+EOF
+            ;;
+        postgres-redis)
+            cat >> .env <<'EOF'
+
+# ============================================================
+# Docker Databases
+# ============================================================
+# PostgreSQL: postgresql://saiuser:saipass@localhost:5432/saidb
+# Redis: redis://default:redis123@localhost:6379
+EOF
+            ;;
+        mongodb-redis)
+            cat >> .env <<'EOF'
+
+# ============================================================
+# Docker Databases
+# ============================================================
+# MongoDB: mongodb://saiuser:saipass@localhost:27017/sai
+# Redis: redis://default:redis123@localhost:6379
+EOF
+            ;;
+        all)
+            cat >> .env <<'EOF'
+
+# ============================================================
+# Docker Databases
+# ============================================================
+# PostgreSQL: postgresql://saiuser:saipass@localhost:5432/saidb
+# MongoDB: mongodb://saiuser:saipass@localhost:27017/sai
+# Redis: redis://default:redis123@localhost:6379
+EOF
+            ;;
+        both)
+            cat >> .env <<'EOF'
 
 # ============================================================
 # Docker Databases
@@ -1614,7 +1689,8 @@ EOF
 # PostgreSQL: postgresql://saiuser:saipass@localhost:5432/saidb
 # MongoDB: mongodb://saiuser:saipass@localhost:27017/sai
 EOF
-    fi
+            ;;
+    esac
 
     # Actualizar .env.example
     if grep -q "docker-compose.yml" .env.example 2>/dev/null; then
@@ -1640,7 +1716,8 @@ EOF
     log "    ${YELLOW}./scripts/db-logs.sh${NC}   - Ver logs"
     echo ""
     log "  ${CYAN}Volúmenes persistentes:${NC}"
-    [ "$DOCKER_DB_TYPE" = "postgres" ] || [ "$DOCKER_DB_TYPE" = "both" ] && log "    ${GREEN}postgres_data${NC} - Datos de PostgreSQL"
-    [ "$DOCKER_DB_TYPE" = "mongodb" ] || [ "$DOCKER_DB_TYPE" = "both" ] && log "    ${CYAN}mongodb_data${NC} - Datos de MongoDB"
+    [ "$DOCKER_DB_TYPE" = "postgres" ] || [ "$DOCKER_DB_TYPE" = "postgres-redis" ] || [ "$DOCKER_DB_TYPE" = "all" ] || [ "$DOCKER_DB_TYPE" = "both" ] && log "    ${GREEN}postgres_data${NC} - Datos de PostgreSQL"
+    [ "$DOCKER_DB_TYPE" = "mongodb" ] || [ "$DOCKER_DB_TYPE" = "mongodb-redis" ] || [ "$DOCKER_DB_TYPE" = "all" ] || [ "$DOCKER_DB_TYPE" = "both" ] && log "    ${CYAN}mongodb_data${NC} - Datos de MongoDB"
+    [ "$DOCKER_DB_TYPE" = "redis" ] || [ "$DOCKER_DB_TYPE" = "postgres-redis" ] || [ "$DOCKER_DB_TYPE" = "mongodb-redis" ] || [ "$DOCKER_DB_TYPE" = "all" ] && log "    ${YELLOW}redis_data${NC} - Datos de Redis"
     echo ""
 }
