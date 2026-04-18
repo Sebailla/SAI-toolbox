@@ -14,7 +14,7 @@ Crea proyectos completos de Frontend (Next.js, React+Vite), Backend (NestJS, Gin
 | **Gestores** | bun, pnpm, npm |
 | **Arquitecturas** | Modular Vertical Slicing o Hexagonal (Clean Architecture) |
 | **Stack SAI** | Prisma + PostgreSQL, Zod, Vitest, Playwright, Husky |
-| **Docker DB** | PostgreSQL y/o MongoDB con persistencia (opcional) |
+| **Docker DB** | PostgreSQL, MongoDB y/o Redis con persistencia + Admin GUIs |
 | **Git Workflow** | Ramas auto: main → develop → feat/fix/docs/chore |
 | **Versionado** | Semantic Versioning con standard-version y CHANGELOG |
 | **Git hooks** | Commitlint + Conventional Commits + branch naming + GGA |
@@ -71,7 +71,7 @@ El script es **completamente interactivo**. Solo ejecutá `init-projects` y te g
       2) Hexagonal
   ▸ Paso 6 ─── Agente de IA
   ▸ Paso 7 ─── Graphify
-  ▸ Paso 8 ─── Docker Database (PostgreSQL/MongoDB/both/none)
+  ▸ Paso 8 ─── Docker Database (7 opciones)
   ▸ Paso 9 ─── Confirmar y crear proyecto
 ```
 
@@ -79,7 +79,9 @@ El script es **completamente interactivo**. Solo ejecutá `init-projects` y te g
 
 ## 🐳 Docker Database (Opcional)
 
-El CLI puede generar contenedores Docker con bases de datos para desarrollo local y los **inicia automáticamente** al terminar de crear el proyecto:
+El CLI puede generar contenedores Docker con bases de datos para desarrollo local y los **inicia automáticamente** al terminar de crear el proyecto. Cada base de datos incluye su panel de administración web.
+
+### Opciones disponibles
 
 ```
   ▸ 1) PostgreSQL (SQL - ideal para Prisma)
@@ -96,7 +98,7 @@ El CLI puede generar contenedores Docker con bases de datos para desarrollo loca
 Si elegiste Docker DB, al terminar de crear el proyecto:
 1. Verifica que Docker esté corriendo
 2. Ejecuta `docker compose up -d` para iniciar los contenedores
-3. Muestra los connection strings
+3. Muestra los connection strings y URLs de los admin panels
 
 Si Docker no está corriendo, te avisa y te dice cómo iniciarlos después.
 
@@ -134,11 +136,11 @@ redis://default:redis123@localhost:6379
 
 Cada base de datos incluye su panel de administración web:
 
-| Servicio | Puerto | URL | Credenciales |
-|----------|--------|-----|--------------|
-| **Adminer** (PostgreSQL) | 8080 | http://localhost:8080 | - |
-| **MongoDB Express** | 8081 | http://localhost:8081 | saiusers / saipass |
-| **Redis Commander** | 8082 | http://localhost:8082 | - |
+| Servicio | Puerto | URL | Base de datos |
+|----------|--------|-----|---------------|
+| **Adminer** | 8080 | http://localhost:8080 | PostgreSQL |
+| **MongoDB Express** | 8081 | http://localhost:8081 | MongoDB |
+| **Redis Commander** | 8082 | http://localhost:8082 | Redis |
 
 ---
 
@@ -148,7 +150,7 @@ El código está organizado en módulos funcionales para facilitar mantenimiento
 
 ```
 init-project/
-├── init-project.sh          # Entry point (~140 líneas)
+├── init-project.sh          # Entry point
 └── lib/
     ├── core.sh              # Colores, logging, cleanup, banner
     ├── validators.sh        # check_dependencies, check_docker
@@ -244,11 +246,12 @@ src/
 ## 🛠️ Stack Tecnológico
 
 | Categoría | Tecnología |
-|-----------|------------|
+|-----------|-------------|
 | **Frontend** | Next.js 16 (App Router) o React + Vite |
 | **Styling** | Tailwind CSS v4 |
 | **Backend** | NestJS o Gin/Go |
 | **Database** | Prisma + PostgreSQL |
+| **Cache/Real-time** | Redis |
 | **Validation** | Zod / class-validator |
 | **Testing** | Vitest + Playwright |
 | **Auth** | JWT + bcryptjs |
@@ -261,9 +264,11 @@ src/
 
 ```
 proyecto/
-├── .env.template          # Variables de entorno
-├── .env                    # (NO commitear - tu config local)
+├── .env.example           # Variables de entorno (template)
+├── .env                   # (NO commitear - tu config local)
 ├── prisma/schema.prisma    # Esquema de base de datos
+├── docker-compose.yml       # Contenedores Docker (si se eligió)
+├── scripts/                 # Scripts de ayuda para Docker
 ├── CHANGELOG.md           # Historial de cambios
 ├── VERSION                # Versión actual (1.0.0)
 ├── .versionrc            # Config de standard-version
@@ -289,7 +294,7 @@ cd mi-proyecto
 bun install
 
 # 2. Configurar variables de entorno
-cp .env.template .env
+cp .env.example .env
 # Editar DATABASE_URL con tu PostgreSQL
 
 # 3. Generar cliente Prisma
@@ -323,14 +328,19 @@ bunx prisma migrate dev --name init
 bun dev
 ```
 
-### Variables de entorno (.env.template)
+### Variables de entorno (.env.example)
 
 ```env
+# Database
 DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?schema=public"
-JWT_SECRET="your-super-secret-jwt-token-change-in-production"
+
+# Auth
+JWT_SECRET="your-secret-key-here"
 JWT_EXPIRES_IN="7d"
-APP_URL="http://localhost:3000"
+
+# App
 NODE_ENV="development"
+PORT="3000"
 ```
 
 ---
@@ -443,4 +453,4 @@ MIT
 
 **Autor:** Sebastián Illa  
 **Creado:** 2026-04-13  
-**Última modificación:** 2026-04-16
+**Última modificación:** 2026-04-18
