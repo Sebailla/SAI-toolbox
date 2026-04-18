@@ -629,9 +629,9 @@ setup_husky() {
 
     $husky_cmd 2>/dev/null || log_warn "Husky init falló, continuando..."
 
-    cat > .husky/commit-msg <<'EOF'
+    cat > .husky/commit-msg <<EOF
 #!/usr/bin/env bash
-${pkg_exec_cmd} exec commitlint --edit "$1"
+${pkg_exec_cmd} exec commitlint --edit "\$1"
 EOF
     chmod +x .husky/commit-msg
 
