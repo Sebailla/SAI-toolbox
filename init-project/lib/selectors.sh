@@ -175,12 +175,17 @@ select_architecture() {
     log "${DIM}        Domain → Application → Infrastructure${NC}"
     log "${DIM}        Separación extrema del negocio${NC}"
     echo ""
+    log "${WHITE}  ▸${NC}  ${BOLD}3${NC}) ${CYAN}Layered (Traditional)${NC}"
+    log "${DIM}        Controllers → Services → Repositories${NC}"
+    log "${DIM}        Capas clásico para APIs REST${NC}"
+    echo ""
     read -r -t 120 -p "   └─►  " ARCH_CHOICE
     echo ""
 
     case "$ARCH_CHOICE" in
         1) ARCHITECTURE="modular" ;;
         2) ARCHITECTURE="hexagonal" ;;
+        3) ARCHITECTURE="layered" ;;
         *) log_warn "Opción inválida. Usando Modular."; ARCHITECTURE="modular" ;;
     esac
     log "${GREEN}  ✓${NC} Arquitectura: ${BOLD}$ARCHITECTURE${NC}"

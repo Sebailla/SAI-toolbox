@@ -176,7 +176,13 @@ El punto de entrada `init-project.sh` DEBE:
 | `select_package_manager` | `select_package_manager` | Pide elección de package manager (bun/pnpm/npm); setea `SELECTED_PKG_MANAGER` |
 | `select_project_type` | `select_project_type` | Pide tipo de proyecto (frontend-next/frontend-vite/backend/monorepo); setea `PROJECT_TYPE` |
 | `select_backend_type` | `select_backend_type` | Pide framework de backend (nestjs/golang); setea `BACKEND_TYPE` |
-| `select_architecture` | `select_architecture` | Pide arquitectura (modular/hexagonal); setea `ARCHITECTURE` |
+| `select_architecture` | `select_architecture` | Pide arquitectura (modular/hexagonal/layered); setea `ARCHITECTURE` |
+
+#### Escenario: select_architecture Muestra 3 Opciones
+
+- DADO usuario llama `select_architecture`
+- ENTONCES ve 3 opciones: Modular, Hexagonal, Layered
+- Y la opción por defecto es Modular si la elección es inválida
 | `select_agent` | `select_agent` | Pide agente de IA (opencode/claude/cursor/gemini/all); setea `TARGET_AGENT` |
 | `select_graphify` | `select_graphify` | Pide habilitación de Graphify; setea `USE_GRAPHIFY` |
 | `select_docker_db` | `select_docker_db` | Pide opción de Docker database; setea `DOCKER_DB_TYPE` basado en `DOCKER_AVAILABLE` |
@@ -187,7 +193,7 @@ El punto de entrada `init-project.sh` DEBE:
 - `SELECTED_PKG_MANAGER` - bun/pnpm/npm
 - `PROJECT_TYPE` - frontend-next/frontend-vite/backend/monorepo
 - `BACKEND_TYPE` - nestjs/golang
-- `ARCHITECTURE` - modular/hexagonal
+- `ARCHITECTURE` - modular/hexagonal/layered
 - `TARGET_AGENT` - opencode/claude/cursor/gemini/all
 - `USE_GRAPHIFY` - yes/no
 - `DOCKER_DB_TYPE` - postgres/mongodb/redis/postgres-redis/mongodb-redis/all/both/none
@@ -350,6 +356,12 @@ El punto de entrada `init-project.sh` DEBE:
 - DADO `ARCHITECTURE` es "modular"
 - CUANDO se llama `setup_agents_md`
 - ENTONCES AGENTS.md contiene sección "MODULAR VERTICAL SLICING"
+
+#### Escenario: setup_agents_md Arquitectura Layered
+
+- DADO `ARCHITECTURE` es "layered"
+- CUANDO se llama `setup_agents_md`
+- ENTONCES AGENTS.md contiene sección "LAYERED ARCHITECTURE"
 
 #### Escenario: setup_docker_db Omite Cuando es None
 

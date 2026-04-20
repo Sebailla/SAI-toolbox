@@ -570,3 +570,446 @@ EOF
     mkdir -p .agent/skills plans specs designs .github/workflows
     log_success "Monorepo Fullstack configurado"
 }
+
+# ============================================================================
+# Apply Architecture Folder Structure
+# ============================================================================
+
+apply_architecture() {
+    log_info "Aplicando estructura de arquitectura: $ARCHITECTURE..."
+
+    case "$ARCHITECTURE" in
+        modular)
+            _apply_modular_architecture
+            ;;
+        hexagonal)
+            _apply_hexagonal_architecture
+            ;;
+        layered)
+            _apply_layered_architecture
+            ;;
+        *)
+            log_warn "Arquitectura desconocida: $ARCHITECTURE - omitiendo estructura"
+            ;;
+    esac
+}
+
+_apply_modular_architecture() {
+    log_info "Creando estructura Modular Vertical Slicing..."
+
+    # Shared UI components
+    mkdir -p src/components/ui
+
+    # Core utilities
+    mkdir -p src/core
+
+    # Example module: auth (to demonstrate structure)
+    mkdir -p src/modules/auth/components
+    mkdir -p src/modules/auth/services
+    mkdir -p src/modules/auth/validators
+
+    # auth module files
+    cat > src/modules/auth/types.ts <<'EOF'
+// Auth module types
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+}
+
+export interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+}
+EOF
+
+    cat > src/modules/auth/index.ts <<'EOF'
+// Auth module public API
+export * from './types';
+export * from './services/auth.service';
+export * from './validators/auth.validators';
+EOF
+
+    cat > src/modules/auth/services/auth.service.ts <<'EOF'
+// Auth service - pure business logic
+import type { User } from '../types';
+
+export async function login(email: string, password: string): Promise<User> {
+  // TODO: implement login logic
+  throw new Error('Not implemented');
+}
+
+export async function logout(): Promise<void> {
+  // TODO: implement logout logic
+  throw new Error('Not implemented');
+}
+
+export async function getCurrentUser(): Promise<User | null> {
+  // TODO: implement getCurrentUser logic
+  return null;
+}
+EOF
+
+    cat > src/modules/auth/validators/auth.validators.ts <<'EOF'
+// Auth validators - Zod schemas
+import { z } from 'zod';
+
+export const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+
+export const registerSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  name: z.string().min(2),
+});
+
+export type LoginInput = z.infer<typeof loginSchema>;
+export type RegisterInput = z.infer<typeof registerSchema>;
+EOF
+
+    cat > src/modules/auth/components/LoginForm.tsx <<'EOF'
+'use client';
+
+import { useState } from 'react';
+
+interface LoginFormProps {
+  onSuccess?: () => void;
+}
+
+export function LoginForm({ onSuccess }: LoginFormProps) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    // TODO: integrate with auth service
+    console.log('Login:', { email, password });
+    onSuccess?.();
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label htmlFor="email">Email</label>
+        <input
+          id="email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+      </div>
+      <div>
+        <label htmlFor="password">Password</label>
+        <input
+          id="password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+      </div>
+      <button type="submit">Login</button>
+    </form>
+  );
+}
+EOF
+
+    log_success "Estructura Modular creada: src/modules/<name>/"
+}
+
+_apply_hexagonal_architecture() {
+    log_info "Creando estructura Hexagonal (Clean Architecture)..."
+
+    # Domain layer - pure business logic
+    mkdir -p src/domain/entities
+    mkdir -p src/domain/value-objects
+    mkdir -p src/domain/services
+    mkdir -p src/domain/events
+    mkdir -p src/domain/exceptions
+    mkdir -p src/domain/interfaces
+
+    # Application layer - use cases
+    mkdir -p src/application/use-cases
+    mkdir -p src/application/dto
+    mkdir -p src/application/ports
+
+    # Infrastructure layer - adapters
+    mkdir -p src/infrastructure/persistence
+    mkdir -p src/infrastructure/http/controllers
+    mkdir -p src/infrastructure/http/middleware
+    mkdir -p src/infrastructure/queue
+    mkdir -p src/infrastructure/external
+
+    # Shared utilities
+    mkdir -p src/shared
+
+    # Example domain entity
+    cat > src/domain/entities/User.ts <<'EOF'
+// Domain entity - pure, no external dependencies
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  createdAt: Date;
+}
+
+export interface UserProps {
+  id: string;
+  email: string;
+  name: string;
+  createdAt?: Date;
+}
+
+export function createUser(props: UserProps): User {
+  return {
+    id: props.id,
+    email: props.email,
+    name: props.name,
+    createdAt: props.createdAt ?? new Date(),
+  };
+}
+EOF
+
+    # Example domain interface (port)
+    cat > src/domain/interfaces/IUserRepository.ts <<'EOF'
+// Port - repository interface defined in domain
+import type { User } from '../entities/User';
+
+export interface IUserRepository {
+  findById(id: string): Promise<User | null>;
+  findByEmail(email: string): Promise<User | null>;
+  save(user: User): Promise<void>;
+  delete(id: string): Promise<void>;
+}
+EOF
+
+    # Example use case
+    cat > src/application/use-cases/RegisterUserUseCase.ts <<'EOF'
+// Application use case - orchestrates domain logic
+import type { User } from '../../domain/entities/User';
+import type { IUserRepository } from '../../domain/interfaces/IUserRepository';
+
+export interface RegisterUserInput {
+  email: string;
+  password: string;
+  name: string;
+}
+
+export class RegisterUserUseCase {
+  constructor(private userRepository: IUserRepository) {}
+
+  async execute(input: RegisterUserInput): Promise<User> {
+    const existing = await this.userRepository.findByEmail(input.email);
+    if (existing) {
+      throw new Error('User already exists');
+    }
+
+    const user: User = {
+      id: crypto.randomUUID(),
+      email: input.email,
+      name: input.name,
+      createdAt: new Date(),
+    };
+
+    await this.userRepository.save(user);
+    return user;
+  }
+}
+EOF
+
+    log_success "Estructura Hexagonal creada: src/domain/, src/application/, src/infrastructure/"
+}
+
+_apply_layered_architecture() {
+    log_info "Creando estructura Layered (Controllers → Services → Repositories)..."
+
+    # Traditional layered structure
+    mkdir -p src/controllers
+    mkdir -p src/services
+    mkdir -p src/repositories
+    mkdir -p src/middleware
+    mkdir -p src/routes
+    mkdir -p src/dto
+    mkdir -p src/utils
+
+    # Example controller
+    cat > src/controllers/UserController.ts <<'EOF'
+// Layered Controller - handles HTTP concerns
+import { Request, Response, NextFunction } from 'express';
+import { UserService } from '../services/UserService';
+
+const userService = new UserService();
+
+export class UserController {
+  static async getAll(req: Request, res: Response, next: NextFunction) {
+    try {
+      const users = await userService.findAll();
+      res.json(users);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getById(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = await userService.findById(req.params.id);
+      if (!user) {
+        res.status(404).json({ error: 'User not found' });
+        return;
+      }
+      res.json(user);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async create(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = await userService.create(req.body);
+      res.status(201).json(user);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async update(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = await userService.update(req.params.id, req.body);
+      if (!user) {
+        res.status(404).json({ error: 'User not found' });
+        return;
+      }
+      res.json(user);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async delete(req: Request, res: Response, next: NextFunction) {
+    try {
+      await userService.delete(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+}
+EOF
+
+    # Example service
+    cat > src/services/UserService.ts <<'EOF'
+// Layered Service - business logic, no HTTP concerns
+import { UserRepository } from '../repositories/UserRepository';
+import type { User } from '../models/User';
+
+export class UserService {
+  private userRepository: UserRepository;
+
+  constructor() {
+    this.userRepository = new UserRepository();
+  }
+
+  async findAll(): Promise<User[]> {
+    return this.userRepository.findAll();
+  }
+
+  async findById(id: string): Promise<User | null> {
+    return this.userRepository.findById(id);
+  }
+
+  async create(data: { email: string; name: string; password: string }): Promise<User> {
+    // Business logic: validation, password hashing, etc.
+    if (!data.email || !data.email.includes('@')) {
+      throw new Error('Invalid email');
+    }
+    if (data.password.length < 8) {
+      throw new Error('Password must be at least 8 characters');
+    }
+
+    const user: User = {
+      id: crypto.randomUUID(),
+      email: data.email,
+      name: data.name,
+      createdAt: new Date(),
+    };
+
+    return this.userRepository.save(user);
+  }
+
+  async update(id: string, data: Partial<User>): Promise<User | null> {
+    const existing = await this.userRepository.findById(id);
+    if (!existing) return null;
+
+    const updated: User = {
+      ...existing,
+      ...data,
+      id: existing.id, // immutable
+      createdAt: existing.createdAt, // immutable
+    };
+
+    return this.userRepository.update(updated);
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.userRepository.delete(id);
+  }
+}
+EOF
+
+    # Example repository
+    cat > src/repositories/UserRepository.ts <<'EOF'
+// Layered Repository - data access abstraction
+import type { User } from '../models/User';
+
+// In a real app, this would use Prisma
+// import { prisma } from '../infrastructure/persistence/prisma';
+
+export class UserRepository {
+  private users: Map<string, User> = new Map();
+
+  async findAll(): Promise<User[]> {
+    return Array.from(this.users.values());
+  }
+
+  async findById(id: string): Promise<User | null> {
+    return this.users.get(id) ?? null;
+  }
+
+  async findByEmail(email: string): Promise<User | null> {
+    return Array.from(this.users.values()).find(u => u.email === email) ?? null;
+  }
+
+  async save(user: User): Promise<User> {
+    this.users.set(user.id, user);
+    return user;
+  }
+
+  async update(user: User): Promise<User> {
+    this.users.set(user.id, user);
+    return user;
+  }
+
+  async delete(id: string): Promise<void> {
+    this.users.delete(id);
+  }
+}
+EOF
+
+    # Example model (shared between layers)
+    mkdir -p src/models
+    cat > src/models/User.ts <<'EOF'
+// Domain model - shared across all layers
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  createdAt: Date;
+  updatedAt?: Date;
+}
+EOF
+
+    log_success "Estructura Layered creada: src/controllers/, src/services/, src/repositories/"
+}

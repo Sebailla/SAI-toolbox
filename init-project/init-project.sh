@@ -71,9 +71,11 @@ main() {
     case "$PROJECT_TYPE" in
         frontend-next)
             create_frontend_next
+            apply_architecture
             ;;
         frontend-vite)
             create_frontend_vite
+            apply_architecture
             ;;
         backend)
             if [ "$BACKEND_TYPE" = "nestjs" ]; then
@@ -84,6 +86,7 @@ main() {
             ;;
         monorepo)
             create_monorepo
+            apply_architecture
             ;;
     esac
 
