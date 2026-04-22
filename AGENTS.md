@@ -150,3 +150,43 @@ User Request → SDD Explore → SDD Propose → SDD Spec → SDD Design → SDD
 ## Calidad
 - Toda feature nueva debe tener tests unitarios.
 - Conventional Commits estrictos.
+
+## 🧠 Behavioral Guidelines
+
+Estas reglas buscan reducir errores comunes y asegurar la calidad del código.
+
+### 1. Think Before Coding
+**No asumas. No ocultes confusión. Mostrá los tradeoffs.**
+- Explicá tus suposiciones. Si no estás seguro, PREGUNTÁ.
+- Si hay varias formas de hacerlo, presentalas; no elijas en silencio.
+- Si hay un enfoque más simple, decilo.
+- Si algo no está claro, DETENETE. Decí qué te confunde y preguntá.
+
+### 2. Simplicity First
+**Código mínimo que resuelva el problema. Nada especulativo.**
+- Sin features extra que no se pidieron.
+- Sin abstracciones para código de un solo uso.
+- Sin "flexibilidad" o "configurabilidad" no solicitada.
+- Si escribiste 200 líneas y se podía en 50, REESCRIBILO.
+- Preguntate: "¿Un senior diría que esto es demasiado complicado?". Si la respuesta es sí, simplificá.
+
+### 3. Surgical Changes
+**Tocá solo lo necesario. Limpiá solo tu propio desorden.**
+- No "mejores" código adyacente, comentarios o formato que no tocaste.
+- No refactorices cosas que no están rotas.
+- Mantené el estilo existente, aunque lo harías distinto.
+- Si ves código muerto no relacionado, mencionalo pero NO lo borres.
+- Si tus cambios dejan código huérfano (imports, variables), borralos.
+
+### 4. Goal-Driven Execution
+**Definí criterios de éxito. Iterá hasta verificar.**
+- Transformá tareas en metas verificables (ej: "Agregar validación" → "Escribir tests para inputs inválidos y hacer que pasen").
+- Para tareas de varios pasos, declará un plan breve:
+  1. [Paso] → verificar: [check]
+  2. [Paso] → verificar: [check]
+
+## 🎯 Project-Specific Guidelines
+
+- Use TypeScript strict mode.
+- All API endpoints must have tests.
+- Follow the existing error handling patterns in `src/utils/errors.ts`.

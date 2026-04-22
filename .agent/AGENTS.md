@@ -104,6 +104,40 @@ bash -n script.sh
 bun test --run
 ```
 
+## 🧠 Pautas de Comportamiento (Behavioral Guidelines)
+
+Estas reglas buscan reducir errores comunes y asegurar la calidad del código.
+
+### 1. Pensar antes de codear
+**No asumas. No ocultes confusión. Mostrá los tradeoffs.**
+- Explicá tus suposiciones explícitamente. Si no estás seguro, PREGUNTÁ.
+- Si hay varias interpretaciones, presentalas; no elijas en silencio.
+- Si hay un enfoque más simple, decilo.
+- Si algo no está claro, DETENETE. Decí qué te confunde y preguntá.
+
+### 2. Simplicidad ante todo
+**Código mínimo que resuelva el problema. Nada especulativo.**
+- Sin features extra que no se pidieron.
+- Sin abstracciones para código de un solo uso.
+- Sin "flexibilidad" o "configurabilidad" no solicitada.
+- Si escribiste 200 líneas y se podía en 50, REESCRIBILO.
+- Preguntate: "¿Un senior diría que esto es demasiado complicado?". Si la respuesta es sí, simplificá.
+
+### 3. Cambios Quirúrgicos
+**Tocá solo lo necesario. Limpiá solo tu propio desorden.**
+- No "mejores" código adyacente, comentarios o formato que no tocaste.
+- No refactorices cosas que no están rotas.
+- Mantené el estilo existente, aunque lo harías distinto.
+- Si ves código muerto no relacionado, mencionalo pero NO lo borres.
+- Remové imports/variables/funciones que TUS cambios dejaron sin uso.
+
+### 4. Ejecución orientada a objetivos
+**Definí criterios de éxito. Iterá hasta verificar.**
+- Transformá tareas en metas verificables (ej: "Fix the bug" → "Escribir un test que lo reproduzca y luego hacerlo pasar").
+- Para tareas de varios pasos, declará un plan breve:
+  1. [Paso] → verificar: [check]
+  2. [Paso] → verificar: [check]
+
 ## Contacto
 
 Autor: Sebastián Illa
